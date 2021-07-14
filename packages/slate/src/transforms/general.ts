@@ -46,9 +46,9 @@ const applyToDraft = (editor: Editor, selection: Selection, op: Operation) => {
       const { path, offset, text } = op
       if (text.length === 0) break
       const node = Node.leaf(editor, path)
-      const before = node.text.slice(0, offset)
-      const after = node.text.slice(offset)
-      node.text = before + text + after
+      const before = node.value.slice(0, offset)
+      const after = node.value.slice(offset)
+      node.value = before + text + after
 
       if (selection) {
         for (const [point, key] of Range.points(selection)) {
@@ -68,7 +68,7 @@ const applyToDraft = (editor: Editor, selection: Selection, op: Operation) => {
       const index = path[path.length - 1]
 
       if (Text.isText(node) && Text.isText(prev)) {
-        prev.text += node.text
+        prev.value += node.value
       } else if (!Text.isText(node) && !Text.isText(prev)) {
         prev.children.push(...node.children)
       } else {
@@ -152,7 +152,7 @@ const applyToDraft = (editor: Editor, selection: Selection, op: Operation) => {
 
             if (prev) {
               point.path = prev[1]
-              point.offset = prev[0].text.length
+              point.offset = prev[0].value.length
             } else if (next) {
               point.path = next[1]
               point.offset = 0
@@ -170,9 +170,9 @@ const applyToDraft = (editor: Editor, selection: Selection, op: Operation) => {
       const { path, offset, text } = op
       if (text.length === 0) break
       const node = Node.leaf(editor, path)
-      const before = node.text.slice(0, offset)
-      const after = node.text.slice(offset + text.length)
-      node.text = before + after
+      const before = node.value.slice(0, offset)
+      const after = node.value.slice(offset + text.length)
+      node.value = before + after
 
       if (selection) {
         for (const [point, key] of Range.points(selection)) {
@@ -267,12 +267,12 @@ const applyToDraft = (editor: Editor, selection: Selection, op: Operation) => {
       let newNode: Descendant
 
       if (Text.isText(node)) {
-        const before = node.text.slice(0, position)
-        const after = node.text.slice(position)
-        node.text = before
+        const before = node.value.slice(0, position)
+        const after = node.value.slice(position)
+        node.value = before
         newNode = {
           ...(properties as Partial<Text>),
-          text: after,
+          value: after,
         }
       } else {
         const before = node.children.slice(0, position)
