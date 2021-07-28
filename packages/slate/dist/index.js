@@ -9,7 +9,6 @@ var isEqual = require('fast-deep-equal');
 
 function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
 
-var isPlainObject__default = /*#__PURE__*/_interopDefaultLegacy(isPlainObject);
 var isEqual__default = /*#__PURE__*/_interopDefaultLegacy(isEqual);
 
 function unwrapExports (x) {
@@ -919,14 +918,14 @@ var Element = {
    * Check if a value implements the 'Ancestor' interface.
    */
   isAncestor: function isAncestor(value) {
-    return isPlainObject__default['default'](value) && Node.isNodeList(value.children);
+    return isPlainObject.isPlainObject(value) && Node.isNodeList(value.children);
   },
 
   /**
    * Check if a value implements the `Element` interface.
    */
   isElement: function isElement(value) {
-    return isPlainObject__default['default'](value) && Node.isNodeList(value.children) && !Editor.isEditor(value);
+    return isPlainObject.isPlainObject(value) && Node.isNodeList(value.children) && !Editor.isEditor(value);
   },
 
   /**
@@ -1264,14 +1263,14 @@ var Editor = {
    * Check if a value is an `Editor` object.
    */
   isEditor: function isEditor(value) {
-    if (!isPlainObject__default['default'](value)) return false;
+    if (!isPlainObject.isPlainObject(value)) return false;
     var cachedIsEditor = IS_EDITOR_CACHE.get(value);
 
     if (cachedIsEditor !== undefined) {
       return cachedIsEditor;
     }
 
-    var isEditor = typeof value.addMark === 'function' && typeof value.apply === 'function' && typeof value.deleteBackward === 'function' && typeof value.deleteForward === 'function' && typeof value.deleteFragment === 'function' && typeof value.insertBreak === 'function' && typeof value.insertFragment === 'function' && typeof value.insertNode === 'function' && typeof value.insertText === 'function' && typeof value.isInline === 'function' && typeof value.isVoid === 'function' && typeof value.normalizeNode === 'function' && typeof value.onChange === 'function' && typeof value.removeMark === 'function' && (value.marks === null || isPlainObject__default['default'](value.marks)) && (value.selection === null || Range.isRange(value.selection)) && Node.isNodeList(value.children) && Operation.isOperationList(value.operations);
+    var isEditor = typeof value.addMark === 'function' && typeof value.apply === 'function' && typeof value.deleteBackward === 'function' && typeof value.deleteForward === 'function' && typeof value.deleteFragment === 'function' && typeof value.insertBreak === 'function' && typeof value.insertFragment === 'function' && typeof value.insertNode === 'function' && typeof value.insertText === 'function' && typeof value.isInline === 'function' && typeof value.isVoid === 'function' && typeof value.normalizeNode === 'function' && typeof value.onChange === 'function' && typeof value.removeMark === 'function' && (value.marks === null || isPlainObject.isPlainObject(value.marks)) && (value.selection === null || Range.isRange(value.selection)) && Node.isNodeList(value.children) && Operation.isOperationList(value.operations);
     IS_EDITOR_CACHE.set(value, isEditor);
     return isEditor;
   },
@@ -3018,7 +3017,7 @@ var Operation = {
    * Check of a value is an `Operation` object.
    */
   isOperation: function isOperation(value) {
-    if (!isPlainObject__default['default'](value)) {
+    if (!isPlainObject.isPlainObject(value)) {
       return false;
     }
 
@@ -3030,7 +3029,7 @@ var Operation = {
         return typeof value.offset === 'number' && typeof value.text === 'string' && Path.isPath(value.path);
 
       case 'merge_node':
-        return typeof value.position === 'number' && Path.isPath(value.path) && isPlainObject__default['default'](value.properties);
+        return typeof value.position === 'number' && Path.isPath(value.path) && isPlainObject.isPlainObject(value.properties);
 
       case 'move_node':
         return Path.isPath(value.path) && Path.isPath(value.newPath);
@@ -3042,13 +3041,13 @@ var Operation = {
         return typeof value.offset === 'number' && typeof value.text === 'string' && Path.isPath(value.path);
 
       case 'set_node':
-        return Path.isPath(value.path) && isPlainObject__default['default'](value.properties) && isPlainObject__default['default'](value.newProperties);
+        return Path.isPath(value.path) && isPlainObject.isPlainObject(value.properties) && isPlainObject.isPlainObject(value.newProperties);
 
       case 'set_selection':
-        return value.properties === null && Range.isRange(value.newProperties) || value.newProperties === null && Range.isRange(value.properties) || isPlainObject__default['default'](value.properties) && isPlainObject__default['default'](value.newProperties);
+        return value.properties === null && Range.isRange(value.newProperties) || value.newProperties === null && Range.isRange(value.properties) || isPlainObject.isPlainObject(value.properties) && isPlainObject.isPlainObject(value.newProperties);
 
       case 'split_node':
-        return Path.isPath(value.path) && typeof value.position === 'number' && isPlainObject__default['default'](value.properties);
+        return Path.isPath(value.path) && typeof value.position === 'number' && isPlainObject.isPlainObject(value.properties);
 
       default:
         return false;
@@ -3640,7 +3639,7 @@ var Point = {
    * Check if a value implements the `Point` interface.
    */
   isPoint: function isPoint(value) {
-    return isPlainObject__default['default'](value) && typeof value.offset === 'number' && Path.isPath(value.path);
+    return isPlainObject.isPlainObject(value) && typeof value.offset === 'number' && Path.isPath(value.path);
   },
 
   /**
@@ -3894,7 +3893,7 @@ var Range = {
    * Check if a value implements the [[Range]] interface.
    */
   isRange: function isRange(value) {
-    return isPlainObject__default['default'](value) && Point.isPoint(value.anchor) && Point.isPoint(value.focus);
+    return isPlainObject.isPlainObject(value) && Point.isPoint(value.anchor) && Point.isPoint(value.focus);
   },
 
   /**
@@ -4012,7 +4011,7 @@ var Text = {
    * Check if a value implements the `Text` interface.
    */
   isText: function isText(value) {
-    return isPlainObject__default['default'](value) && typeof value.value === 'string';
+    return isPlainObject.isPlainObject(value) && typeof value.value === 'string';
   },
 
   /**

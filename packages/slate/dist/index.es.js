@@ -1,4 +1,4 @@
-import isPlainObject from 'is-plain-object';
+import { isPlainObject } from 'is-plain-object';
 import { reverse } from 'esrever';
 import { produce, createDraft, finishDraft, isDraft } from 'immer';
 import isEqual from 'fast-deep-equal';

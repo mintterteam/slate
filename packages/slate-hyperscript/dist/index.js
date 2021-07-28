@@ -5,10 +5,6 @@ Object.defineProperty(exports, '__esModule', { value: true });
 var isPlainObject = require('is-plain-object');
 var slate = require('slate');
 
-function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
-
-var isPlainObject__default = /*#__PURE__*/_interopDefaultLegacy(isPlainObject);
-
 function unwrapExports (x) {
 	return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, 'default') ? x['default'] : x;
 }
@@ -691,7 +687,7 @@ var createFactory = function createFactory(creators) {
       attributes = {};
     }
 
-    if (!isPlainObject__default['default'](attributes)) {
+    if (!isPlainObject.isPlainObject(attributes)) {
       children = [attributes].concat(children);
       attributes = {};
     }

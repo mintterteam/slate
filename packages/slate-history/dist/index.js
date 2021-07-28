@@ -5,16 +5,12 @@ Object.defineProperty(exports, '__esModule', { value: true });
 var isPlainObject = require('is-plain-object');
 var slate = require('slate');
 
-function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
-
-var isPlainObject__default = /*#__PURE__*/_interopDefaultLegacy(isPlainObject);
-
 var History = {
   /**
    * Check if a value is a `History` object.
    */
   isHistory: function isHistory(value) {
-    return isPlainObject__default['default'](value) && Array.isArray(value.redos) && Array.isArray(value.undos) && (value.redos.length === 0 || slate.Operation.isOperationList(value.redos[0])) && (value.undos.length === 0 || slate.Operation.isOperationList(value.undos[0]));
+    return isPlainObject.isPlainObject(value) && Array.isArray(value.redos) && Array.isArray(value.undos) && (value.redos.length === 0 || slate.Operation.isOperationList(value.redos[0])) && (value.undos.length === 0 || slate.Operation.isOperationList(value.undos[0]));
   }
 };
 

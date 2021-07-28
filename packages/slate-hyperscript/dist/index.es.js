@@ -1,4 +1,4 @@
-import isPlainObject from 'is-plain-object';
+import { isPlainObject } from 'is-plain-object';
 import { Text, Range, createEditor as createEditor$1, Node, Element } from 'slate';
 
 function _defineProperty(obj, key, value) {
