@@ -204,7 +204,7 @@ export const createEditor = (): Editor => {
 
       // Ensure that block and inline nodes have at least one text child.
       if (Element.isElement(node) && node.children.length === 0) {
-        const child = { value: '' }
+        const child = { type: 'text', value: '' }
         Transforms.insertNodes(editor, child, {
           at: path.concat(0),
           voids: true,
@@ -246,14 +246,14 @@ export const createEditor = (): Editor => {
           // Ensure that inline nodes are surrounded by text nodes.
           if (editor.isInline(child)) {
             if (prev == null || !Text.isText(prev)) {
-              const newChild = { value: '' }
+              const newChild = { type: 'text', value: '' }
               Transforms.insertNodes(editor, newChild, {
                 at: path.concat(n),
                 voids: true,
               })
               n++
             } else if (isLast) {
-              const newChild = { value: '' }
+              const newChild = { type: 'text', value: '' }
               Transforms.insertNodes(editor, newChild, {
                 at: path.concat(n + 1),
                 voids: true,
@@ -267,13 +267,13 @@ export const createEditor = (): Editor => {
             if (Text.equals(child, prev, { loose: true })) {
               Transforms.mergeNodes(editor, { at: path.concat(n), voids: true })
               n--
-            } else if (prev.value === '') {
+            } else if (prev.value == '') {
               Transforms.removeNodes(editor, {
                 at: path.concat(n - 1),
                 voids: true,
               })
               n--
-            } else if (isLast && child.value === '') {
+            } else if (isLast && child.value == '') {
               Transforms.removeNodes(editor, {
                 at: path.concat(n),
                 voids: true,

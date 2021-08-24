@@ -45,10 +45,7 @@
         "allowKeywords": true
       }
     ],
-    "eqeqeq": [
-      "error",
-      "smart"
-    ],
+    "eqeqeq": 0,
     "import/default": "error",
     "import/export": "error",
     "import/first": "error",
@@ -159,7 +156,7 @@
     "yoda": [
       "error",
       "never"
-    ]
+    ],
   },
   "overrides": [
     {
