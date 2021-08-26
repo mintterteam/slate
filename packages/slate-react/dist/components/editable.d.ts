@@ -40,6 +40,7 @@ export declare type EditableProps = {
     renderElement?: (props: RenderElementProps) => JSX.Element;
     renderLeaf?: (props: RenderLeafProps) => JSX.Element;
     renderPlaceholder?: (props: RenderPlaceholderProps) => JSX.Element;
+    scrollSelectionIntoView?: (editor: ReactEditor, domRange: DOMRange) => void;
     as?: React.ElementType;
 } & React.TextareaHTMLAttributes<HTMLDivElement>;
 /**

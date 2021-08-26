@@ -8,7 +8,6 @@ var getDirection = require('direction');
 var throttle = require('lodash/throttle');
 var scrollIntoView = require('scroll-into-view-if-needed');
 var isHotkey = require('is-hotkey');
-var invariant = require('tiny-invariant');
 var ReactDOM = require('react-dom');
 
 function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
@@ -17,7 +16,6 @@ var React__default = /*#__PURE__*/_interopDefaultLegacy(React);
 var getDirection__default = /*#__PURE__*/_interopDefaultLegacy(getDirection);
 var throttle__default = /*#__PURE__*/_interopDefaultLegacy(throttle);
 var scrollIntoView__default = /*#__PURE__*/_interopDefaultLegacy(scrollIntoView);
-var invariant__default = /*#__PURE__*/_interopDefaultLegacy(invariant);
 var ReactDOM__default = /*#__PURE__*/_interopDefaultLegacy(ReactDOM);
 
 function unwrapExports (x) {
@@ -256,8 +254,20 @@ var TextString = function TextString(props) {
   var text = props.text,
       _props$isTrailing = props.isTrailing,
       isTrailing = _props$isTrailing === void 0 ? false : _props$isTrailing;
+  var ref = React.useRef(null);
+  var forceUpdateFlag = React.useRef(false);
+
+  if (ref.current && ref.current.textContent !== text) {
+    forceUpdateFlag.current = !forceUpdateFlag.current;
+  } // This component may have skipped rendering due to native operations being
+  // applied. If an undo is performed React will see the old and new shadow DOM
+  // match and not apply an update. Forces each render to actually reconcile.
+
+
   return /*#__PURE__*/React__default['default'].createElement("span", {
-    "data-slate-string": true
+    "data-slate-string": true,
+    ref: ref,
+    key: forceUpdateFlag.current ? 'A' : 'B'
   }, text, isTrailing ? '\n' : null);
 };
 /**
@@ -290,9 +300,9 @@ var NODE_TO_PARENT = new WeakMap();
 var EDITOR_TO_WINDOW = new WeakMap();
 var EDITOR_TO_ELEMENT = new WeakMap();
 var ELEMENT_TO_NODE = new WeakMap();
-var KEY_TO_ELEMENT = new WeakMap();
 var NODE_TO_ELEMENT = new WeakMap();
 var NODE_TO_KEY = new WeakMap();
+var EDITOR_TO_KEY_TO_ELEMENT = new WeakMap();
 /**
  * Weak maps for storing editor-related state.
  */
@@ -311,9 +321,6 @@ var EDITOR_TO_RESTORE_DOM = new WeakMap();
 
 var PLACEHOLDER_SYMBOL = Symbol('placeholder');
 
-// prevent inconsistent rendering by React with IME input
-
-var keyForString = 0;
 /**
  * Individual leaves in a text node with unique formatting.
  */
@@ -343,7 +350,6 @@ var Leaf = function Leaf(props) {
     };
   }, [placeholderRef, leaf]);
   var children = /*#__PURE__*/React__default['default'].createElement(String, {
-    key: keyForString++,
     isLast: isLast,
     leaf: leaf,
     parent: parent,
@@ -387,7 +393,7 @@ var Leaf = function Leaf(props) {
 };
 
 var MemoizedLeaf = /*#__PURE__*/React__default['default'].memo(Leaf, function (prev, next) {
-  return next.parent === prev.parent && next.isLast === prev.isLast && next.renderLeaf === prev.renderLeaf && next.renderPlaceholder === prev.renderPlaceholder && next.text === prev.text && next.leaf.value === prev.leaf.value && slate.Text.equals(next.leaf, prev.leaf) && next.leaf[PLACEHOLDER_SYMBOL] === prev.leaf[PLACEHOLDER_SYMBOL];
+  return next.parent === prev.parent && next.isLast === prev.isLast && next.renderLeaf === prev.renderLeaf && next.renderPlaceholder === prev.renderPlaceholder && next.text === prev.text && slate.Text.equals(next.leaf, prev.leaf) && next.leaf[PLACEHOLDER_SYMBOL] === prev.leaf[PLACEHOLDER_SYMBOL];
 });
 var DefaultLeaf = function DefaultLeaf(props) {
   var attributes = props.attributes,
@@ -407,7 +413,9 @@ var IS_CHROME = typeof navigator !== 'undefined' && /Chrome/i.test(navigator.use
 
 var IS_CHROME_LEGACY = typeof navigator !== 'undefined' && /Chrome?\/(?:[0-7][0-5]|[0-6][0-9])/i.test(navigator.userAgent); // Firefox did not support `beforeInput` until `v87`.
 
-var IS_FIREFOX_LEGACY = typeof navigator !== 'undefined' && /^(?!.*Seamonkey)(?=.*Firefox\/(?:[0-7][0-9]|[0-8][0-6])).*/i.test(navigator.userAgent); // Check if DOM is available as React does internally.
+var IS_FIREFOX_LEGACY = typeof navigator !== 'undefined' && /^(?!.*Seamonkey)(?=.*Firefox\/(?:[0-7][0-9]|[0-8][0-6])).*/i.test(navigator.userAgent); // qq browser
+
+var IS_QQBROWSER = typeof navigator !== 'undefined' && /.*QQBrowser/.test(navigator.userAgent); // Check if DOM is available as React does internally.
 // https://github.com/facebook/react/blob/master/packages/shared/ExecutionEnvironment.js
 
 var CAN_USE_DOM = !!(typeof window !== 'undefined' && typeof window.document !== 'undefined' && typeof window.document.createElement !== 'undefined'); // COMPAT: Firefox/Edge Legacy don't support the `beforeinput` event
@@ -493,12 +501,14 @@ var Text = function Text(props) {
 
 
   useIsomorphicLayoutEffect(function () {
+    var KEY_TO_ELEMENT = EDITOR_TO_KEY_TO_ELEMENT.get(editor);
+
     if (ref.current) {
-      KEY_TO_ELEMENT.set(key, ref.current);
+      KEY_TO_ELEMENT === null || KEY_TO_ELEMENT === void 0 ? void 0 : KEY_TO_ELEMENT.set(key, ref.current);
       NODE_TO_ELEMENT.set(text, ref.current);
       ELEMENT_TO_NODE.set(ref.current, text);
     } else {
-      KEY_TO_ELEMENT["delete"](key);
+      KEY_TO_ELEMENT === null || KEY_TO_ELEMENT === void 0 ? void 0 : KEY_TO_ELEMENT["delete"](key);
       NODE_TO_ELEMENT["delete"](text);
     }
   });
@@ -511,19 +521,6 @@ var Text = function Text(props) {
 var MemoizedText = /*#__PURE__*/React__default['default'].memo(Text, function (prev, next) {
   return next.parent === prev.parent && next.isLast === prev.isLast && next.renderLeaf === prev.renderLeaf && next.text === prev.text && isDecoratorRangeListEqual(next.decorations, prev.decorations);
 });
-
-/**
- * A React context for sharing the `selected` state of an element.
- */
-
-var SelectedContext = /*#__PURE__*/React.createContext(false);
-/**
- * Get the current `selected` state of an element.
- */
-
-var useSelected = function useSelected() {
-  return React.useContext(SelectedContext);
-};
 
 /**
  * Element.
@@ -610,22 +607,22 @@ var Element = function Element(props) {
 
 
   useIsomorphicLayoutEffect(function () {
+    var KEY_TO_ELEMENT = EDITOR_TO_KEY_TO_ELEMENT.get(editor);
+
     if (ref.current) {
-      KEY_TO_ELEMENT.set(key, ref.current);
+      KEY_TO_ELEMENT === null || KEY_TO_ELEMENT === void 0 ? void 0 : KEY_TO_ELEMENT.set(key, ref.current);
       NODE_TO_ELEMENT.set(element, ref.current);
       ELEMENT_TO_NODE.set(ref.current, element);
     } else {
-      KEY_TO_ELEMENT["delete"](key);
+      KEY_TO_ELEMENT === null || KEY_TO_ELEMENT === void 0 ? void 0 : KEY_TO_ELEMENT["delete"](key);
       NODE_TO_ELEMENT["delete"](element);
     }
   });
-  return /*#__PURE__*/React__default['default'].createElement(SelectedContext.Provider, {
-    value: !!selection
-  }, renderElement({
+  return renderElement({
     attributes: attributes,
     children: children,
     element: element
-  }));
+  });
 };
 
 var MemoizedElement = /*#__PURE__*/React__default['default'].memo(Element, function (prev, next) {
@@ -682,6 +679,19 @@ var useDecorate = function useDecorate() {
   return React.useContext(DecorateContext);
 };
 
+/**
+ * A React context for sharing the `selected` state of an element.
+ */
+
+var SelectedContext = /*#__PURE__*/React.createContext(false);
+/**
+ * Get the current `selected` state of an element.
+ */
+
+var useSelected = function useSelected() {
+  return React.useContext(SelectedContext);
+};
+
 function _createForOfIteratorHelper(o, allowArrayLike) { var it; if (typeof Symbol === "undefined" || o[Symbol.iterator] == null) { if (Array.isArray(o) || (it = _unsupportedIterableToArray(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = o[Symbol.iterator](); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
 
 function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen); }
@@ -731,7 +741,9 @@ var useChildren = function useChildren(props) {
     }
 
     if (slate.Element.isElement(n)) {
-      children.push( /*#__PURE__*/React__default['default'].createElement(MemoizedElement, {
+      children.push( /*#__PURE__*/React__default['default'].createElement(SelectedContext.Provider, {
+        value: !!sel
+      }, /*#__PURE__*/React__default['default'].createElement(MemoizedElement, {
         decorations: ds,
         element: n,
         key: key.id,
@@ -739,7 +751,7 @@ var useChildren = function useChildren(props) {
         renderPlaceholder: renderPlaceholder,
         renderLeaf: renderLeaf,
         selection: sel
-      }));
+      })));
     } else {
       children.push( /*#__PURE__*/React__default['default'].createElement(MemoizedText, {
         decorations: ds,
@@ -1059,13 +1071,88 @@ var getPlainText = function getPlainText(domNode) {
 
   return text;
 };
+/**
+ * Get x-slate-fragment attribute from data-slate-fragment
+ */
+
+var catchSlateFragment = /data-slate-fragment="(.+?)"/m;
+var getSlateFragmentAttribute = function getSlateFragmentAttribute(dataTransfer) {
+  var htmlData = dataTransfer.getData('text/html');
+
+  var _ref = htmlData.match(catchSlateFragment) || [],
+      _ref2 = _slicedToArray(_ref, 2),
+      fragment = _ref2[1];
+
+  return fragment;
+};
+/**
+ * Get the x-slate-fragment attribute that exist in text/html data
+ * and append it to the DataTransfer object
+ */
+
+var getClipboardData = function getClipboardData(dataTransfer) {
+  if (!dataTransfer.getData('application/x-slate-fragment')) {
+    var fragment = getSlateFragmentAttribute(dataTransfer);
+
+    if (fragment) {
+      var clipboardData = new DataTransfer();
+      dataTransfer.types.forEach(function (type) {
+        clipboardData.setData(type, dataTransfer.getData(type));
+      });
+      clipboardData.setData('application/x-slate-fragment', fragment);
+      return clipboardData;
+    }
+  }
+
+  return dataTransfer;
+};
+
+var AS_NATIVE = new WeakMap();
+var NATIVE_OPERATIONS = new WeakMap();
+/**
+ * `asNative` queues operations as native, meaning native browser events will
+ * not have been prevented, and we need to flush the operations
+ * after the native events have propogated to the DOM.
+ * @param {Editor} editor - Editor on which the operations are being applied
+ * @param {callback} fn - Function containing .exec calls which will be queued as native
+ */
+
+var asNative = function asNative(editor, fn) {
+  AS_NATIVE.set(editor, true);
+  fn();
+  AS_NATIVE.set(editor, false);
+};
+/**
+ * `flushNativeEvents` applies any queued native events.
+ * @param {Editor} editor - Editor on which the operations are being applied
+ */
+
+var flushNativeEvents = function flushNativeEvents(editor) {
+  var nativeOps = NATIVE_OPERATIONS.get(editor); // Clear list _before_ applying, as we might flush
+  // events in each op, as well.
+
+  NATIVE_OPERATIONS.set(editor, []);
+
+  if (nativeOps) {
+    slate.Editor.withoutNormalizing(editor, function () {
+      nativeOps.forEach(function (op) {
+        editor.apply(op);
+      });
+    });
+  }
+};
 
 function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); keys.push.apply(keys, symbols); } return keys; }
 
 function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
+
+var Children = function Children(props) {
+  return /*#__PURE__*/React__default['default'].createElement(React__default['default'].Fragment, null, useChildren(props));
+};
 /**
  * Editable.
  */
+
 
 var Editable = function Editable(props) {
   var autoFocus = props.autoFocus,
@@ -1081,13 +1168,21 @@ var Editable = function Editable(props) {
       renderPlaceholder = _props$renderPlacehol === void 0 ? function (props) {
     return /*#__PURE__*/React__default['default'].createElement(DefaultPlaceholder, Object.assign({}, props));
   } : _props$renderPlacehol,
+      _props$scrollSelectio = props.scrollSelectionIntoView,
+      scrollSelectionIntoView = _props$scrollSelectio === void 0 ? defaultScrollSelectionIntoView : _props$scrollSelectio,
       _props$style = props.style,
       style = _props$style === void 0 ? {} : _props$style,
       _props$as = props.as,
       Component = _props$as === void 0 ? 'div' : _props$as,
-      attributes = _objectWithoutProperties(props, ["autoFocus", "decorate", "onDOMBeforeInput", "placeholder", "readOnly", "renderElement", "renderLeaf", "renderPlaceholder", "style", "as"]);
+      attributes = _objectWithoutProperties(props, ["autoFocus", "decorate", "onDOMBeforeInput", "placeholder", "readOnly", "renderElement", "renderLeaf", "renderPlaceholder", "scrollSelectionIntoView", "style", "as"]);
 
-  var editor = useSlate();
+  var editor = useSlate(); // Rerender editor when composition status changed
+
+  var _useState = React.useState(false),
+      _useState2 = _slicedToArray(_useState, 2),
+      isComposing = _useState2[0],
+      setIsComposing = _useState2[1];
+
   var ref = React.useRef(null); // Update internal state on each render.
 
   IS_READ_ONLY.set(editor, readOnly); // Keep track of some state for the event handler logic.
@@ -1095,6 +1190,7 @@ var Editable = function Editable(props) {
   var state = React.useMemo(function () {
     return {
       isComposing: false,
+      hasInsertPrefixInCompositon: false,
       isDraggingInternally: false,
       isUpdatingSelection: false,
       latestElement: null
@@ -1160,7 +1256,6 @@ var Editable = function Editable(props) {
     } // Otherwise the DOM selection is out of sync, so update it.
 
 
-    var el = ReactEditor.toDOMNode(editor, editor);
     state.isUpdatingSelection = true;
     var newDomRange = selection && ReactEditor.toDOMRange(editor, selection);
 
@@ -1171,13 +1266,7 @@ var Editable = function Editable(props) {
         domSelection.setBaseAndExtent(newDomRange.startContainer, newDomRange.startOffset, newDomRange.endContainer, newDomRange.endOffset);
       }
 
-      var leafEl = newDomRange.startContainer.parentElement;
-      leafEl.getBoundingClientRect = newDomRange.getBoundingClientRect.bind(newDomRange);
-      scrollIntoView__default['default'](leafEl, {
-        scrollMode: 'if-needed'
-      }); // @ts-ignore
-
-      delete leafEl.getBoundingClientRect;
+      scrollSelectionIntoView(editor, newDomRange);
     } else {
       domSelection.removeAllRanges();
     }
@@ -1186,6 +1275,7 @@ var Editable = function Editable(props) {
       // COMPAT: In Firefox, it's not enough to create a range, you also need
       // to focus the contenteditable element too. (2016/11/16)
       if (newDomRange && IS_FIREFOX) {
+        var el = ReactEditor.toDOMNode(editor, editor);
         el.focus();
       }
 
@@ -1214,9 +1304,48 @@ var Editable = function Editable(props) {
         return;
       }
 
-      event.preventDefault(); // COMPAT: For the deleting forward/backward input types we don't want
+      var _native = false;
+
+      if (type === 'insertText' && selection && slate.Range.isCollapsed(selection) && // Only use native character insertion for single characters a-z or space for now.
+      // Long-press events (hold a + press 4 = ä) to choose a special character otherwise
+      // causes duplicate inserts.
+      event.data && event.data.length === 1 && /[a-z ]/i.test(event.data) && // Chrome seems to have issues correctly editing the start of nodes.
+      // When there is an inline element, e.g. a link, and you select
+      // right after it (the start of the next node).
+      selection.anchor.offset !== 0) {
+        _native = true; // Skip native if there are marks, as
+        // `insertText` will insert a node, not just text.
+
+        if (editor.marks) {
+          _native = false;
+        } // and because of the selection moving in `insertText` (create-editor.ts).
+
+
+        var anchor = selection.anchor;
+        var inline = slate.Editor.above(editor, {
+          at: anchor,
+          match: function match(n) {
+            return slate.Editor.isInline(editor, n);
+          },
+          mode: 'highest'
+        });
+
+        if (inline) {
+          var _inline = _slicedToArray(inline, 2),
+              inlinePath = _inline[1];
+
+          if (slate.Editor.isEnd(editor, selection.anchor, inlinePath)) {
+            _native = false;
+          }
+        }
+      }
+
+      if (!_native) {
+        event.preventDefault();
+      } // COMPAT: For the deleting forward/backward input types we don't want
       // to change the selection because it is the range that will be deleted,
       // and those commands determine that for themselves.
+
 
       if (!type.startsWith('delete') || type.startsWith('deleteBy')) {
         var _event$getTargetRange = event.getTargetRanges(),
@@ -1345,6 +1474,7 @@ var Editable = function Editable(props) {
               // then we will abort because we're still composing and the selection
               // won't be updated properly.
               // https://www.w3.org/TR/input-events-2/
+              state.isComposing && setIsComposing(false);
               state.isComposing = false;
             }
 
@@ -1353,7 +1483,15 @@ var Editable = function Editable(props) {
             if (data instanceof window.DataTransfer) {
               ReactEditor.insertData(editor, data);
             } else if (typeof data === 'string') {
-              slate.Editor.insertText(editor, data);
+              // Only insertText operations use the native functionality, for now.
+              // Potentially expand to single character deletes, as well.
+              if (_native) {
+                asNative(editor, function () {
+                  return slate.Editor.insertText(editor, data);
+                });
+              } else {
+                slate.Editor.insertText(editor, data);
+              }
             }
 
             break;
@@ -1415,7 +1553,10 @@ var Editable = function Editable(props) {
         slate.Transforms.deselect(editor);
       }
     }
-  }, 100), [readOnly]); // Attach a native DOM event handler for `selectionchange`, because React's
+  }, 100), [readOnly]);
+  var scheduleOnDOMSelectionChange = React.useCallback(function () {
+    return setTimeout(onDOMSelectionChange);
+  }, [onDOMSelectionChange]); // Attach a native DOM event handler for `selectionchange`, because React's
   // built-in `onSelect` handler doesn't fire for all selection changes. It's a
   // leaky polyfill that only fires on keypresses or clicks. Instead, we want to
   // fire for any change to the selection inside the editor. (2019/11/04)
@@ -1423,14 +1564,14 @@ var Editable = function Editable(props) {
 
   useIsomorphicLayoutEffect(function () {
     var window = ReactEditor.getWindow(editor);
-    window.document.addEventListener('selectionchange', onDOMSelectionChange);
+    window.document.addEventListener('selectionchange', scheduleOnDOMSelectionChange);
     return function () {
-      window.document.removeEventListener('selectionchange', onDOMSelectionChange);
+      window.document.removeEventListener('selectionchange', scheduleOnDOMSelectionChange);
     };
-  }, [onDOMSelectionChange]);
+  }, [scheduleOnDOMSelectionChange]);
   var decorations = decorate([editor, []]);
 
-  if (placeholder && editor.children.length === 1 && Array.from(slate.Node.texts(editor)).length === 1 && slate.Node.string(editor) === '') {
+  if (placeholder && editor.children.length === 1 && Array.from(slate.Node.texts(editor)).length === 1 && slate.Node.string(editor) === '' && !isComposing) {
     var _decorations$push;
 
     var start = slate.Editor.start(editor, []);
@@ -1481,6 +1622,13 @@ var Editable = function Editable(props) {
         }
       }
     }, [readOnly]),
+    onInput: React.useCallback(function (event) {
+      // Flush native operations, as native events will have propogated
+      // and we can correctly compare DOM text values in components
+      // to stop rendering, so that browser functions like autocorrect
+      // and spellcheck work as expected.
+      flushNativeEvents(editor);
+    }, []),
     onBlur: React.useCallback(function (event) {
       if (readOnly || state.isUpdatingSelection || !hasEditableTarget(editor, event.target) || isEventHandled(event, attributes.onBlur)) {
         return;
@@ -1555,27 +1703,83 @@ var Editable = function Editable(props) {
     }, [readOnly, attributes.onClick]),
     onCompositionEnd: React.useCallback(function (event) {
       if (hasEditableTarget(editor, event.target) && !isEventHandled(event, attributes.onCompositionEnd)) {
+        state.isComposing && setIsComposing(false);
         state.isComposing = false; // COMPAT: In Chrome, `beforeinput` events for compositions
         // aren't correct and never fire the "insertFromComposition"
         // type that we need. So instead, insert whenever a composition
         // ends since it will already have been committed to the DOM.
 
-        if (!IS_SAFARI && !IS_FIREFOX_LEGACY && event.data) {
+        if (!IS_SAFARI && !IS_FIREFOX_LEGACY && !IS_IOS && !IS_QQBROWSER && event.data) {
           slate.Editor.insertText(editor, event.data);
+        }
+
+        if (editor.selection && slate.Range.isCollapsed(editor.selection)) {
+          var leafPath = editor.selection.anchor.path;
+          var currentTextNode = slate.Node.leaf(editor, leafPath);
+
+          if (state.hasInsertPrefixInCompositon) {
+            state.hasInsertPrefixInCompositon = false;
+            slate.Editor.withoutNormalizing(editor, function () {
+              // remove Unicode BOM prefix added in `onCompositionStart`
+              var text = currentTextNode.value.replace(/^\uFEFF/, '');
+              slate.Transforms["delete"](editor, {
+                distance: currentTextNode.value.length,
+                reverse: true
+              });
+              slate.Transforms.insertText(editor, text);
+            });
+          }
         }
       }
     }, [attributes.onCompositionEnd]),
     onCompositionUpdate: React.useCallback(function (event) {
       if (hasEditableTarget(editor, event.target) && !isEventHandled(event, attributes.onCompositionUpdate)) {
+        !state.isComposing && setIsComposing(true);
         state.isComposing = true;
       }
     }, [attributes.onCompositionUpdate]),
     onCompositionStart: React.useCallback(function (event) {
       if (hasEditableTarget(editor, event.target) && !isEventHandled(event, attributes.onCompositionStart)) {
-        var selection = editor.selection;
+        var selection = editor.selection,
+            marks = editor.marks;
 
-        if (selection && slate.Range.isExpanded(selection)) {
-          slate.Editor.deleteFragment(editor);
+        if (selection) {
+          if (slate.Range.isExpanded(selection)) {
+            slate.Editor.deleteFragment(editor);
+            return;
+          }
+
+          var inline = slate.Editor.above(editor, {
+            match: function match(n) {
+              return slate.Editor.isInline(editor, n);
+            },
+            mode: 'highest'
+          });
+
+          if (inline) {
+            var _inline2 = _slicedToArray(inline, 2),
+                inlinePath = _inline2[1];
+
+            if (slate.Editor.isEnd(editor, selection.anchor, inlinePath)) {
+              var point = slate.Editor.after(editor, inlinePath);
+              slate.Transforms.setSelection(editor, {
+                anchor: point,
+                focus: point
+              });
+            }
+          } // insert new node in advance to ensure composition text will insert
+          // along with final input text
+          // add Unicode BOM prefix to avoid normalize removing this node
+
+
+          if (marks) {
+            state.hasInsertPrefixInCompositon = true;
+            slate.Transforms.insertNodes(editor, _objectSpread({
+              value: "\uFEFF"
+            }, marks), {
+              select: true
+            });
+          }
         }
       }
     }, [attributes.onCompositionStart]),
@@ -1688,7 +1892,7 @@ var Editable = function Editable(props) {
       }
     }, [readOnly, attributes.onFocus]),
     onKeyDown: React.useCallback(function (event) {
-      if (!readOnly && hasEditableTarget(editor, event.target) && !isEventHandled(event, attributes.onKeyDown)) {
+      if (!readOnly && !state.isComposing && hasEditableTarget(editor, event.target) && !isEventHandled(event, attributes.onKeyDown)) {
         var nativeEvent = event.nativeEvent;
         var selection = editor.selection;
         var element = editor.children[selection !== null ? selection.focus.path[0] : 0];
@@ -1967,7 +2171,7 @@ var Editable = function Editable(props) {
         }
       }
     }, [readOnly, attributes.onPaste])
-  }), useChildren({
+  }), /*#__PURE__*/React__default['default'].createElement(Children, {
     decorations: decorations,
     node: editor,
     renderElement: renderElement,
@@ -1991,6 +2195,18 @@ var DefaultPlaceholder = function DefaultPlaceholder(_ref) {
 
 var defaultDecorate = function defaultDecorate() {
   return [];
+};
+/**
+ * A default implement to scroll dom range into view.
+ */
+
+var defaultScrollSelectionIntoView = function defaultScrollSelectionIntoView(editor, domRange) {
+  var leafEl = domRange.startContainer.parentElement;
+  leafEl.getBoundingClientRect = domRange.getBoundingClientRect.bind(domRange);
+  scrollIntoView__default['default'](leafEl, {
+    scrollMode: 'if-needed'
+  });
+  delete leafEl.getBoundingClientRect;
 };
 /**
  * Check if the target is in the editor.
@@ -2191,17 +2407,13 @@ var ReactEditor = {
    */
   findDocumentOrShadowRoot: function findDocumentOrShadowRoot(editor) {
     var el = ReactEditor.toDOMNode(editor, editor);
-    var root = el.getRootNode(); // The below exception will always be thrown for iframes because the document inside an iframe
-    // does not inherit it's prototype from the parent document, therefore we return early
+    var root = el.getRootNode();
 
-    if (el.ownerDocument !== document) return el.ownerDocument;
-    if (!(root instanceof Document || root instanceof ShadowRoot)) throw new Error("Unable to find DocumentOrShadowRoot for editor element: ".concat(el)); // COMPAT: Only Chrome implements the DocumentOrShadowRoot mixin for
-    // ShadowRoot; other browsers still implement it on the Document
-    // interface. (2020/08/08)
-    // https://developer.mozilla.org/en-US/docs/Web/API/ShadowRoot#Properties
+    if ((root instanceof Document || root instanceof ShadowRoot) && root.getSelection != null) {
+      return root;
+    }
 
-    if (root.getSelection === undefined && el.ownerDocument !== null) return el.ownerDocument;
-    return root;
+    return el.ownerDocument;
   },
 
   /**
@@ -2310,7 +2522,8 @@ var ReactEditor = {
    * Find the native DOM element from a Slate node.
    */
   toDOMNode: function toDOMNode(editor, node) {
-    var domNode = slate.Editor.isEditor(node) ? EDITOR_TO_ELEMENT.get(editor) : KEY_TO_ELEMENT.get(ReactEditor.findKey(editor, node));
+    var KEY_TO_ELEMENT = EDITOR_TO_KEY_TO_ELEMENT.get(editor);
+    var domNode = slate.Editor.isEditor(node) ? EDITOR_TO_ELEMENT.get(editor) : KEY_TO_ELEMENT === null || KEY_TO_ELEMENT === void 0 ? void 0 : KEY_TO_ELEMENT.get(ReactEditor.findKey(editor, node));
 
     if (!domNode) {
       throw new Error("Cannot resolve a DOM node from Slate node: ".concat(JSON.stringify(node)));
@@ -3010,6 +3223,10 @@ function _createForOfIteratorHelper$1(o, allowArrayLike) { var it; if (typeof Sy
 function _unsupportedIterableToArray$1(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray$1(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray$1(o, minLen); }
 
 function _arrayLikeToArray$1(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
+
+function ownKeys$1(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); keys.push.apply(keys, symbols); } return keys; }
+
+function _objectSpread$1(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$1(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$1(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
 /**
  * Based loosely on:
  *
@@ -3089,12 +3306,30 @@ var AndroidInputManager = function AndroidInputManager(editor) {
 
 
   this.insertText = function (insertedText) {
-    var selection = _this.editor.selection; // Insert the batched text diffs
+    var _this$editor = _this.editor,
+        selection = _this$editor.selection,
+        marks = _this$editor.marks; // Insert the batched text diffs
 
     insertedText.forEach(function (insertion) {
-      slate.Transforms.insertText(_this.editor, insertion.text.insertText, {
-        at: normalizeTextInsertionRange(_this.editor, selection, insertion)
-      });
+      var value = insertion.text.insertText;
+      var at = normalizeTextInsertionRange(_this.editor, selection, insertion);
+
+      if (marks) {
+        var node = _objectSpread$1({
+          value: value
+        }, marks);
+
+        slate.Transforms.insertNodes(_this.editor, node, {
+          match: slate.Text.isText,
+          at: at,
+          select: true
+        });
+        _this.editor.marks = null;
+      } else {
+        slate.Transforms.insertText(_this.editor, value, {
+          at: at
+        });
+      }
     });
   };
   /**
@@ -3275,9 +3510,9 @@ function useAndroidInputManager(node) {
   };
 }
 
-function ownKeys$1(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); keys.push.apply(keys, symbols); } return keys; }
+function ownKeys$2(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); keys.push.apply(keys, symbols); } return keys; }
 
-function _objectSpread$1(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$1(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$1(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
+function _objectSpread$2(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$2(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$2(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
 /**
  * Editable.
  */
@@ -3525,7 +3760,7 @@ var AndroidEditable = function AndroidEditable(props) {
     contentEditable: readOnly ? undefined : true,
     suppressContentEditableWarning: true,
     ref: ref,
-    style: _objectSpread$1({
+    style: _objectSpread$2({
       // Allow positioning relative to the editable element.
       position: 'relative',
       // Prevent the default outline styles.
@@ -3611,7 +3846,9 @@ var AndroidEditable = function AndroidEditable(props) {
       IS_FOCUSED["delete"](editor);
     }, [readOnly, attributes.onBlur]),
     onPaste: React.useCallback(function (event) {
-      // This unfortunately needs to be handled with paste events instead.
+      // this will make application/x-slate-fragment exist when onPaste attributes is passed
+      event.clipboardData = getClipboardData(event.clipboardData); // This unfortunately needs to be handled with paste events instead.
+
       if (hasEditableTarget(editor, event.target) && !isEventHandled(event, attributes.onPaste) && !readOnly) {
         event.preventDefault();
         ReactEditor.insertData(editor, event.clipboardData);
@@ -3658,8 +3895,14 @@ var Slate = function Slate(props) {
       setKey = _useState2[1];
 
   var context = React.useMemo(function () {
-    invariant__default['default'](slate.Node.isNodeList(value), "[Slate] value is invalid! Expected a list of elements but got: ".concat(JSON.stringify(value)));
-    invariant__default['default'](slate.Editor.isEditor(editor), "[Slate] editor is invalid! you passed: ".concat(JSON.stringify(editor)));
+    if (!slate.Node.isNodeList(value)) {
+      throw new Error("[Slate] value is invalid! Expected a list of elements" + "but got: ".concat(JSON.stringify(value)));
+    }
+
+    if (!slate.Editor.isEditor(editor)) {
+      throw new Error("[Slate] editor is invalid! you passed:" + "".concat(JSON.stringify(editor)));
+    }
+
     editor.children = value;
     Object.assign(editor, rest);
     return [editor];
@@ -3799,7 +4042,10 @@ var withReact = function withReact(editor) {
   var e = editor;
   var apply = e.apply,
       onChange = e.onChange,
-      deleteBackward = e.deleteBackward;
+      deleteBackward = e.deleteBackward; // The WeakMap which maps a key to a specific HTMLElement must be scoped to the editor instance to
+  // avoid collisions between editors in the DOM that share the same value.
+
+  EDITOR_TO_KEY_TO_ELEMENT.set(e, new WeakMap());
 
   e.deleteBackward = function (unit) {
     if (unit !== 'line') {
@@ -3831,6 +4077,33 @@ var withReact = function withReact(editor) {
   };
 
   e.apply = function (op) {
+    // if we're NOT an insert_text and there's a queue
+    // of native events, bail out and flush the queue.
+    // otherwise transforms as part of this cycle will
+    // be incorrect.
+    //
+    // This is needed as overriden operations (e.g. `insertText`)
+    // can call additional transforms, which will need accurate
+    // content, and will be called _before_ `onInput` is fired.
+    if (op.type !== 'insert_text') {
+      AS_NATIVE.set(editor, false);
+      flushNativeEvents(editor);
+    } // If we're in native mode, queue the operation
+    // and it will be applied later.
+
+
+    if (AS_NATIVE.get(editor)) {
+      var nativeOps = NATIVE_OPERATIONS.get(editor);
+
+      if (nativeOps) {
+        nativeOps.push(op);
+      } else {
+        NATIVE_OPERATIONS.set(editor, [op]);
+      }
+
+      return;
+    }
+
     var matches = [];
 
     switch (op.type) {
@@ -4019,10 +4292,14 @@ var withReact = function withReact(editor) {
     data.setData('text/html', div.innerHTML);
     data.setData('text/plain', getPlainText(div));
     document.body.removeChild(div);
+    return data;
   };
 
   e.insertData = function (data) {
-    var fragment = data.getData('application/x-slate-fragment');
+    /**
+     * Checking copied fragment from application/x-slate-fragment or data-slate-fragment
+     */
+    var fragment = data.getData('application/x-slate-fragment') || getSlateFragmentAttribute(data);
 
     if (fragment) {
       var decoded = decodeURIComponent(window.atob(fragment));

@@ -13,6 +13,7 @@ export interface ElementInterface {
     isElement: (value: any) => value is Element;
     isElementList: (value: any) => value is Element[];
     isElementProps: (props: any) => props is Partial<Element>;
+    isElementType: <T extends Element>(value: any, elementVal: string, elementKey?: string) => value is T;
     matches: (element: Element, props: Partial<Element>) => boolean;
 }
 export declare const Element: ElementInterface;

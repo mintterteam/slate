@@ -14,9 +14,9 @@ export declare const EDITOR_TO_WINDOW: WeakMap<Editor, Window>;
 export declare const EDITOR_TO_ELEMENT: WeakMap<Editor, HTMLElement>;
 export declare const EDITOR_TO_PLACEHOLDER: WeakMap<Editor, string>;
 export declare const ELEMENT_TO_NODE: WeakMap<HTMLElement, Node>;
-export declare const KEY_TO_ELEMENT: WeakMap<Key, HTMLElement>;
 export declare const NODE_TO_ELEMENT: WeakMap<Node, HTMLElement>;
 export declare const NODE_TO_KEY: WeakMap<Node, Key>;
+export declare const EDITOR_TO_KEY_TO_ELEMENT: WeakMap<Editor, WeakMap<Key, HTMLElement>>;
 /**
  * Weak maps for storing editor-related state.
  */

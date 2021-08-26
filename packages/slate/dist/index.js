@@ -3,13 +3,7 @@
 Object.defineProperty(exports, '__esModule', { value: true });
 
 var isPlainObject = require('is-plain-object');
-var esrever = require('esrever');
 var immer = require('immer');
-var isEqual = require('fast-deep-equal');
-
-function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
-
-var isEqual__default = /*#__PURE__*/_interopDefaultLegacy(isEqual);
 
 function unwrapExports (x) {
 	return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, 'default') ? x['default'] : x;
@@ -448,6 +442,7 @@ var createEditor = function createEditor() {
 
       if (Element.isElement(node) && node.children.length === 0) {
         var child = {
+          type: 'text',
           value: ''
         };
         Transforms.insertNodes(editor, child, {
@@ -485,6 +480,7 @@ var createEditor = function createEditor() {
           if (editor.isInline(_child)) {
             if (prev == null || !Text.isText(prev)) {
               var newChild = {
+                type: 'text',
                 value: ''
               };
               Transforms.insertNodes(editor, newChild, {
@@ -494,6 +490,7 @@ var createEditor = function createEditor() {
               n++;
             } else if (isLast) {
               var _newChild = {
+                type: 'text',
                 value: ''
               };
               Transforms.insertNodes(editor, _newChild, {
@@ -514,13 +511,13 @@ var createEditor = function createEditor() {
                 voids: true
               });
               n--;
-            } else if (prev.value === '') {
+            } else if (prev.value == '') {
               Transforms.removeNodes(editor, {
                 at: path.concat(n - 1),
                 voids: true
               });
               n--;
-            } else if (isLast && _child.value === '') {
+            } else if (_child.value == '') {
               Transforms.removeNodes(editor, {
                 at: path.concat(n),
                 voids: true
@@ -715,119 +712,211 @@ module.exports["default"] = module.exports, module.exports.__esModule = true;
 
 var _objectWithoutProperties = unwrapExports(objectWithoutProperties);
 
+function _createForOfIteratorHelper$1(o, allowArrayLike) { var it; if (typeof Symbol === "undefined" || o[Symbol.iterator] == null) { if (Array.isArray(o) || (it = _unsupportedIterableToArray$1(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = o[Symbol.iterator](); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
+
+function _unsupportedIterableToArray$1(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray$1(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray$1(o, minLen); }
+
+function _arrayLikeToArray$1(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
+
 /**
  * Constants for string distance checking.
  */
 var SPACE = /\s/;
 var PUNCTUATION = /[\u0021-\u0023\u0025-\u002A\u002C-\u002F\u003A\u003B\u003F\u0040\u005B-\u005D\u005F\u007B\u007D\u00A1\u00A7\u00AB\u00B6\u00B7\u00BB\u00BF\u037E\u0387\u055A-\u055F\u0589\u058A\u05BE\u05C0\u05C3\u05C6\u05F3\u05F4\u0609\u060A\u060C\u060D\u061B\u061E\u061F\u066A-\u066D\u06D4\u0700-\u070D\u07F7-\u07F9\u0830-\u083E\u085E\u0964\u0965\u0970\u0AF0\u0DF4\u0E4F\u0E5A\u0E5B\u0F04-\u0F12\u0F14\u0F3A-\u0F3D\u0F85\u0FD0-\u0FD4\u0FD9\u0FDA\u104A-\u104F\u10FB\u1360-\u1368\u1400\u166D\u166E\u169B\u169C\u16EB-\u16ED\u1735\u1736\u17D4-\u17D6\u17D8-\u17DA\u1800-\u180A\u1944\u1945\u1A1E\u1A1F\u1AA0-\u1AA6\u1AA8-\u1AAD\u1B5A-\u1B60\u1BFC-\u1BFF\u1C3B-\u1C3F\u1C7E\u1C7F\u1CC0-\u1CC7\u1CD3\u2010-\u2027\u2030-\u2043\u2045-\u2051\u2053-\u205E\u207D\u207E\u208D\u208E\u2329\u232A\u2768-\u2775\u27C5\u27C6\u27E6-\u27EF\u2983-\u2998\u29D8-\u29DB\u29FC\u29FD\u2CF9-\u2CFC\u2CFE\u2CFF\u2D70\u2E00-\u2E2E\u2E30-\u2E3B\u3001-\u3003\u3008-\u3011\u3014-\u301F\u3030\u303D\u30A0\u30FB\uA4FE\uA4FF\uA60D-\uA60F\uA673\uA67E\uA6F2-\uA6F7\uA874-\uA877\uA8CE\uA8CF\uA8F8-\uA8FA\uA92E\uA92F\uA95F\uA9C1-\uA9CD\uA9DE\uA9DF\uAA5C-\uAA5F\uAADE\uAADF\uAAF0\uAAF1\uABEB\uFD3E\uFD3F\uFE10-\uFE19\uFE30-\uFE52\uFE54-\uFE61\uFE63\uFE68\uFE6A\uFE6B\uFF01-\uFF03\uFF05-\uFF0A\uFF0C-\uFF0F\uFF1A\uFF1B\uFF1F\uFF20\uFF3B-\uFF3D\uFF3F\uFF5B\uFF5D\uFF5F-\uFF65]/;
 var CHAMELEON = /['\u2018\u2019]/;
-var SURROGATE_START = 0xd800;
-var SURROGATE_END = 0xdfff;
-var ZERO_WIDTH_JOINER = 0x200d;
 /**
  * Get the distance to the end of the first character in a string of text.
  */
 
-var getCharacterDistance = function getCharacterDistance(text) {
-  var offset = 0; // prev types:
-  // SURR: surrogate pair
-  // MOD: modifier (technically also surrogate pair)
+var getCharacterDistance = function getCharacterDistance(str) {
+  var isRTL = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
+  var isLTR = !isRTL;
+  var dist = 0; // prev types:
+  // NSEQ: non sequenceable codepoint.
+  // MOD: modifier
   // ZWJ: zero width joiner
   // VAR: variation selector
-  // BMP: sequenceable character from basic multilingual plane
+  // BMP: sequenceable codepoint from basic multilingual plane
+  // RI: regional indicator
+  // KC: keycap
+  // TAG: tag
 
   var prev = null;
-  var charCode = text.charCodeAt(0);
+  var codepoints = isLTR ? str : codepointsIteratorRTL(str);
 
-  while (charCode) {
-    if (isSurrogate(charCode)) {
-      var modifier = isModifier(charCode, text, offset); // Early returns are the heart of this function, where we decide if previous and current
-      // codepoints should form a single character (in terms of how many of them should selection
-      // jump over).
+  var _iterator = _createForOfIteratorHelper$1(codepoints),
+      _step;
 
-      if (prev === 'SURR' || prev === 'BMP') {
+  try {
+    for (_iterator.s(); !(_step = _iterator.n()).done;) {
+      var codepoint = _step.value;
+      var code = codepoint.codePointAt(0);
+      if (!code) break; // Check if codepoint is part of a sequence.
+
+      if (isZWJ(code)) {
+        dist += codepoint.length;
+        prev = 'ZWJ';
+        continue;
+      }
+
+      var _ref = isLTR ? [isKeycap, isCombiningEnclosingKeycap] : [isCombiningEnclosingKeycap, isKeycap],
+          _ref2 = _slicedToArray(_ref, 2),
+          isKeycapStart = _ref2[0],
+          isKeycapEnd = _ref2[1];
+
+      if (isKeycapStart(code)) {
+        if (prev === 'KC') {
+          break;
+        }
+
+        dist += codepoint.length;
+        prev = 'KC';
+        continue;
+      }
+
+      if (isKeycapEnd(code)) {
+        dist += codepoint.length;
         break;
       }
 
-      offset += 2;
-      prev = modifier ? 'MOD' : 'SURR';
-      charCode = text.charCodeAt(offset); // Absolutely fine to `continue` without any checks because if `charCode` is NaN (which
-      // is the case when out of `text` range), next `while` loop won"t execute and we"re done.
+      if (isVariationSelector(code)) {
+        dist += codepoint.length;
 
-      continue;
-    }
+        if (isLTR && prev === 'BMP') {
+          break;
+        }
 
-    if (charCode === ZERO_WIDTH_JOINER) {
-      offset += 1;
-      prev = 'ZWJ';
-      charCode = text.charCodeAt(offset);
-      continue;
-    }
+        prev = 'VAR';
+        continue;
+      }
 
-    if (isBMPEmoji(charCode)) {
-      if (prev && prev !== 'ZWJ' && prev !== 'VAR') {
+      if (isBMPEmoji(code)) {
+        if (isLTR && prev && prev !== 'ZWJ' && prev !== 'VAR') {
+          break;
+        }
+
+        dist += codepoint.length;
+
+        if (isRTL && prev === 'VAR') {
+          break;
+        }
+
+        prev = 'BMP';
+        continue;
+      }
+
+      if (isModifier(code)) {
+        dist += codepoint.length;
+        prev = 'MOD';
+        continue;
+      }
+
+      var _ref3 = isLTR ? [isBlackFlag, isCancelTag] : [isCancelTag, isBlackFlag],
+          _ref4 = _slicedToArray(_ref3, 2),
+          isTagStart = _ref4[0],
+          isTagEnd = _ref4[1];
+
+      if (isTagStart(code)) {
+        if (prev === 'TAG') break;
+        dist += codepoint.length;
+        prev = 'TAG';
+        continue;
+      }
+
+      if (isTagEnd(code)) {
+        dist += codepoint.length;
         break;
       }
 
-      offset += 1;
-      prev = 'BMP';
-      charCode = text.charCodeAt(offset);
-      continue;
-    }
-
-    if (isVariationSelector(charCode)) {
-      if (prev && prev !== 'ZWJ') {
-        break;
+      if (prev === 'TAG' && isTag(code)) {
+        dist += codepoint.length;
+        continue;
       }
 
-      offset += 1;
-      prev = 'VAR';
-      charCode = text.charCodeAt(offset);
-      continue;
-    } // Modifier 'groups up' with what ever character is before that (even whitespace), need to
-    // look ahead.
+      if (isRegionalIndicator(code)) {
+        dist += codepoint.length;
+
+        if (prev === 'RI') {
+          break;
+        }
+
+        prev = 'RI';
+        continue;
+      }
+
+      if (!isBMP(code)) {
+        // If previous code point is not sequenceable, it means we are not in a
+        // sequence.
+        if (prev === 'NSEQ') {
+          break;
+        }
+
+        dist += codepoint.length;
+        prev = 'NSEQ';
+        continue;
+      } // Modifier 'groups up' with what ever character is before that (even whitespace), need to
+      // look ahead.
 
 
-    if (prev === 'MOD') {
-      offset += 1;
+      if (isLTR && prev === 'MOD') {
+        dist += codepoint.length;
+        break;
+      } // If while loop ever gets here, we're done (e.g latin chars).
+
+
       break;
-    } // If while loop ever gets here, we're done (e.g latin chars).
-
-
-    break;
+    }
+  } catch (err) {
+    _iterator.e(err);
+  } finally {
+    _iterator.f();
   }
 
-  return offset || 1;
+  return dist || 1;
 };
 /**
  * Get the distance to the end of the first word in a string of text.
  */
 
 var getWordDistance = function getWordDistance(text) {
-  var length = 0;
-  var i = 0;
+  var isRTL = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
+  var dist = 0;
   var started = false;
 
-  var _char;
+  while (text.length > 0) {
+    var charDist = getCharacterDistance(text, isRTL);
 
-  while (_char = text.charAt(i)) {
-    var l = getCharacterDistance(_char);
-    _char = text.slice(i, i + l);
-    var rest = text.slice(i + l);
+    var _splitByCharacterDist = splitByCharacterDistance(text, charDist, isRTL),
+        _splitByCharacterDist2 = _slicedToArray(_splitByCharacterDist, 2),
+        _char = _splitByCharacterDist2[0],
+        remaining = _splitByCharacterDist2[1];
 
-    if (isWordCharacter(_char, rest)) {
+    if (isWordCharacter(_char, remaining, isRTL)) {
       started = true;
-      length += l;
+      dist += charDist;
     } else if (!started) {
-      length += l;
+      dist += charDist;
     } else {
       break;
     }
 
-    i += l;
+    text = remaining;
   }
 
-  return length;
+  return dist;
+};
+/**
+ * Split a string in two parts at a given distance starting from the end when
+ * `isRTL` is set to `true`.
+ */
+
+var splitByCharacterDistance = function splitByCharacterDistance(str, dist, isRTL) {
+  if (isRTL) {
+    var at = str.length - dist;
+    return [str.slice(at, str.length), str.slice(0, at)];
+  }
+
+  return [str.slice(0, dist), str.slice(dist)];
 };
 /**
  * Check if a character is a word character. The `remaining` argument is used
@@ -835,6 +924,8 @@ var getWordDistance = function getWordDistance(text) {
  */
 
 var isWordCharacter = function isWordCharacter(_char2, remaining) {
+  var isRTL = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
+
   if (SPACE.test(_char2)) {
     return false;
   } // Chameleons count as word characters as long as they're in a word, so
@@ -842,12 +933,14 @@ var isWordCharacter = function isWordCharacter(_char2, remaining) {
 
 
   if (CHAMELEON.test(_char2)) {
-    var next = remaining.charAt(0);
-    var length = getCharacterDistance(next);
-    next = remaining.slice(0, length);
-    var rest = remaining.slice(length);
+    var charDist = getCharacterDistance(remaining, isRTL);
 
-    if (isWordCharacter(next, rest)) {
+    var _splitByCharacterDist3 = splitByCharacterDistance(remaining, charDist, isRTL),
+        _splitByCharacterDist4 = _slicedToArray(_splitByCharacterDist3, 2),
+        nextChar = _splitByCharacterDist4[0],
+        nextRemaining = _splitByCharacterDist4[1];
+
+    if (isWordCharacter(nextChar, nextRemaining, isRTL)) {
       return true;
     }
   }
@@ -859,27 +952,14 @@ var isWordCharacter = function isWordCharacter(_char2, remaining) {
   return true;
 };
 /**
- * Determines if `code` is a surrogate
- */
-
-
-var isSurrogate = function isSurrogate(code) {
-  return SURROGATE_START <= code && code <= SURROGATE_END;
-};
-/**
  * Does `code` form Modifier with next one.
  *
  * https://emojipedia.org/modifiers/
  */
 
 
-var isModifier = function isModifier(code, text, offset) {
-  if (code === 0xd83c) {
-    var next = text.charCodeAt(offset + 1);
-    return next <= 0xdfff && next >= 0xdffb;
-  }
-
-  return false;
+var isModifier = function isModifier(code) {
+  return code >= 0x1f3fb && code <= 0x1f3ff;
 };
 /**
  * Is `code` a Variation Selector.
@@ -890,6 +970,28 @@ var isModifier = function isModifier(code, text, offset) {
 
 var isVariationSelector = function isVariationSelector(code) {
   return code <= 0xfe0f && code >= 0xfe00;
+};
+/**
+ * Is `code` a code point used in keycap sequence.
+ *
+ * https://emojipedia.org/emoji-keycap-sequence/
+ */
+
+
+var isKeycap = function isKeycap(code) {
+  return code >= 0x30 && code <= 0x39 || // digits
+  code === 0x23 || // number sign
+  code === 0x2a;
+};
+/**
+ * Is `code` a Combining Enclosing Keycap.
+ *
+ * https://emojipedia.org/combining-enclosing-keycap/
+ */
+
+
+var isCombiningEnclosingKeycap = function isCombiningEnclosingKeycap(code) {
+  return code === 0x20e3;
 };
 /**
  * Is `code` one of the BMP codes used in emoji sequences.
@@ -909,8 +1011,133 @@ var isBMPEmoji = function isBMPEmoji(code) {
   code === 0x2620 || // scull (☠)
   code === 0x2695 || // medical (⚕)
   code === 0x2708 || // plane (✈️)
-  code === 0x25ef // large circle (◯)
+  code === 0x25ef || // large circle (◯)
+  code === 0x2b06 || // up arrow (⬆)
+  code === 0x2197 || // up-right arrow (↗)
+  code === 0x27a1 || // right arrow (➡)
+  code === 0x2198 || // down-right arrow (↘)
+  code === 0x2b07 || // down arrow (⬇)
+  code === 0x2199 || // down-left arrow (↙)
+  code === 0x2b05 || // left arrow (⬅)
+  code === 0x2196 || // up-left arrow (↖)
+  code === 0x2195 || // up-down arrow (↕)
+  code === 0x2194 || // left-right arrow (↔)
+  code === 0x21a9 || // right arrow curving left (↩)
+  code === 0x21aa || // left arrow curving right (↪)
+  code === 0x2934 || // right arrow curving up (⤴)
+  code === 0x2935 // right arrow curving down (⤵)
   ;
+};
+/**
+ * Is `code` a Regional Indicator.
+ *
+ * https://en.wikipedia.org/wiki/Regional_indicator_symbol
+ */
+
+
+var isRegionalIndicator = function isRegionalIndicator(code) {
+  return code >= 0x1f1e6 && code <= 0x1f1ff;
+};
+/**
+ * Is `code` from basic multilingual plane.
+ *
+ * https://codepoints.net/basic_multilingual_plane
+ */
+
+
+var isBMP = function isBMP(code) {
+  return code <= 0xffff;
+};
+/**
+ * Is `code` a Zero Width Joiner.
+ *
+ * https://emojipedia.org/zero-width-joiner/
+ */
+
+
+var isZWJ = function isZWJ(code) {
+  return code === 0x200d;
+};
+/**
+ * Is `code` a Black Flag.
+ *
+ * https://emojipedia.org/black-flag/
+ */
+
+
+var isBlackFlag = function isBlackFlag(code) {
+  return code === 0x1f3f4;
+};
+/**
+ * Is `code` a Tag.
+ *
+ * https://emojipedia.org/emoji-tag-sequence/
+ */
+
+
+var isTag = function isTag(code) {
+  return code >= 0xe0000 && code <= 0xe007f;
+};
+/**
+ * Is `code` a Cancel Tag.
+ *
+ * https://emojipedia.org/cancel-tag/
+ */
+
+
+var isCancelTag = function isCancelTag(code) {
+  return code === 0xe007f;
+};
+/**
+ * Iterate on codepoints from right to left.
+ */
+
+
+var codepointsIteratorRTL = function* codepointsIteratorRTL(str) {
+  var end = str.length - 1;
+
+  for (var i = 0; i < str.length; i++) {
+    var char1 = str.charAt(end - i);
+
+    if (isLowSurrogate(char1.charCodeAt(0))) {
+      var char2 = str.charAt(end - i - 1);
+
+      if (isHighSurrogate(char2.charCodeAt(0))) {
+        yield char2 + char1;
+        i++;
+        continue;
+      }
+    }
+
+    yield char1;
+  }
+};
+/**
+ * Is `charCode` a high surrogate.
+ *
+ * https://en.wikipedia.org/wiki/Universal_Character_Set_characters#Surrogates
+ */
+
+var isHighSurrogate = function isHighSurrogate(charCode) {
+  return charCode >= 0xd800 && charCode <= 0xdbff;
+};
+/**
+ * Is `charCode` a low surrogate.
+ *
+ * https://en.wikipedia.org/wiki/Universal_Character_Set_characters#Surrogates
+ */
+
+
+var isLowSurrogate = function isLowSurrogate(charCode) {
+  return charCode >= 0xdc00 && charCode <= 0xdfff;
+};
+
+/**
+ * Shared the function with isElementType utility
+ */
+
+var isElement = function isElement(value) {
+  return isPlainObject.isPlainObject(value) && Node.isNodeList(value.children) && !Editor.isEditor(value);
 };
 
 var Element = {
@@ -924,9 +1151,7 @@ var Element = {
   /**
    * Check if a value implements the `Element` interface.
    */
-  isElement: function isElement(value) {
-    return isPlainObject.isPlainObject(value) && Node.isNodeList(value.children) && !Editor.isEditor(value);
-  },
+  isElement: isElement,
 
   /**
    * Check if a value is an array of `Element` objects.
@@ -942,6 +1167,15 @@ var Element = {
    */
   isElementProps: function isElementProps(props) {
     return props.children !== undefined;
+  },
+
+  /**
+   * Check if a value implements the `Element` interface and has elementKey with selected value.
+   * Default it check to `type` key value
+   */
+  isElementType: function isElementType(value, elementVal) {
+    var elementKey = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 'type';
+    return isElement(value) && value[elementKey] === elementVal;
   },
 
   /**
@@ -969,11 +1203,11 @@ function ownKeys$1(object, enumerableOnly) { var keys = Object.keys(object); if 
 
 function _objectSpread$1(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$1(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$1(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
 
-function _createForOfIteratorHelper$1(o, allowArrayLike) { var it; if (typeof Symbol === "undefined" || o[Symbol.iterator] == null) { if (Array.isArray(o) || (it = _unsupportedIterableToArray$1(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = o[Symbol.iterator](); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
+function _createForOfIteratorHelper$2(o, allowArrayLike) { var it; if (typeof Symbol === "undefined" || o[Symbol.iterator] == null) { if (Array.isArray(o) || (it = _unsupportedIterableToArray$2(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = o[Symbol.iterator](); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
 
-function _unsupportedIterableToArray$1(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray$1(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray$1(o, minLen); }
+function _unsupportedIterableToArray$2(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray$2(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray$2(o, minLen); }
 
-function _arrayLikeToArray$1(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
+function _arrayLikeToArray$2(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
 var IS_EDITOR_CACHE = new WeakMap();
 var Editor = {
   /**
@@ -996,7 +1230,7 @@ var Editor = {
     var path = Editor.path(editor, at);
     var reverse = mode === 'lowest';
 
-    var _iterator = _createForOfIteratorHelper$1(Editor.levels(editor, {
+    var _iterator = _createForOfIteratorHelper$2(Editor.levels(editor, {
       at: path,
       voids: voids,
       match: match,
@@ -1049,7 +1283,7 @@ var Editor = {
     var d = 0;
     var target;
 
-    var _iterator2 = _createForOfIteratorHelper$1(Editor.positions(editor, _objectSpread$1(_objectSpread$1({}, options), {}, {
+    var _iterator2 = _createForOfIteratorHelper$2(Editor.positions(editor, _objectSpread$1(_objectSpread$1({}, options), {}, {
       at: range
     }))),
         _step2;
@@ -1095,7 +1329,7 @@ var Editor = {
     var d = 0;
     var target;
 
-    var _iterator3 = _createForOfIteratorHelper$1(Editor.positions(editor, _objectSpread$1(_objectSpread$1({}, options), {}, {
+    var _iterator3 = _createForOfIteratorHelper$2(Editor.positions(editor, _objectSpread$1(_objectSpread$1({}, options), {}, {
       at: range,
       reverse: true
     }))),
@@ -1383,7 +1617,7 @@ var Editor = {
     var levels = [];
     var path = Editor.path(editor, at);
 
-    var _iterator4 = _createForOfIteratorHelper$1(Node.levels(editor, path)),
+    var _iterator4 = _createForOfIteratorHelper$2(Node.levels(editor, path)),
         _step4;
 
     try {
@@ -1617,7 +1851,7 @@ var Editor = {
     var matches = [];
     var hit;
 
-    var _iterator5 = _createForOfIteratorHelper$1(nodeEntries),
+    var _iterator5 = _createForOfIteratorHelper$2(nodeEntries),
         _step5;
 
     try {
@@ -1720,7 +1954,7 @@ var Editor = {
         editor.normalizeNode() does fix this, but some normalization fixes also require it to work.
         Running an initial pass avoids the catch-22 race condition.
       */
-      var _iterator6 = _createForOfIteratorHelper$1(getDirtyPaths(editor)),
+      var _iterator6 = _createForOfIteratorHelper$2(getDirtyPaths(editor)),
           _step6;
 
       try {
@@ -1728,21 +1962,21 @@ var Editor = {
           var _dirtyPath = _step6.value;
 
           if (Node.has(editor, _dirtyPath)) {
-            var _Editor$node = Editor.node(editor, _dirtyPath),
-                _Editor$node2 = _slicedToArray(_Editor$node, 2),
-                node = _Editor$node2[0],
-                _ = _Editor$node2[1]; // Add a text child to elements with no children.
-            // This is safe to do in any order, by definition it can't cause other paths to change.
+            var _entry = Editor.node(editor, _dirtyPath);
+
+            var _entry2 = _slicedToArray(_entry, 2),
+                node = _entry2[0],
+                _ = _entry2[1];
+            /*
+              The default normalizer inserts an empty text node in this scenario, but it can be customised.
+              So there is some risk here.
+                         As long as the normalizer only inserts child nodes for this case it is safe to do in any order;
+              by definition adding children to an empty node can't cause other paths to change.
+            */
 
 
             if (Element.isElement(node) && node.children.length === 0) {
-              var child = {
-                value: ''
-              };
-              Transforms.insertNodes(editor, child, {
-                at: _dirtyPath.concat(0),
-                voids: true
-              });
+              editor.normalizeNode(_entry);
             }
           }
         }
@@ -2022,7 +2256,7 @@ var Editor = {
     // through the blockText and leafText we just need to remember a window of
     // one block node and leaf node, respectively.
 
-    var _iterator7 = _createForOfIteratorHelper$1(Editor.nodes(editor, {
+    var _iterator7 = _createForOfIteratorHelper$2(Editor.nodes(editor, {
       at: at,
       reverse: reverse,
       voids: voids
@@ -2071,7 +2305,6 @@ var Editor = {
             }, {
               voids: voids
             });
-            blockText = reverse ? esrever.reverse(blockText) : blockText;
             isNewBlock = true;
           }
         }
@@ -2112,8 +2345,10 @@ var Editor = {
             // otherwise advance blockText forward by the new `distance`.
             if (distance === 0) {
               if (blockText === '') break;
-              distance = calcDistance(blockText, unit);
-              blockText = blockText.slice(distance);
+              distance = calcDistance(blockText, unit, reverse); // Split the string at the previously found distance and use the
+              // remaining string for the next iteration.
+
+              blockText = splitByCharacterDistance(blockText, distance, reverse)[1];
             } // Advance `leafText` by the current `distance`.
 
 
@@ -2149,11 +2384,11 @@ var Editor = {
       _iterator7.f();
     }
 
-    function calcDistance(text, unit) {
+    function calcDistance(text, unit, reverse) {
       if (unit === 'character') {
-        return getCharacterDistance(text);
+        return getCharacterDistance(text, reverse);
       } else if (unit === 'word') {
-        return getWordDistance(text);
+        return getWordDistance(text, reverse);
       } else if (unit === 'line' || unit === 'block') {
         return text.length;
       }
@@ -2331,7 +2566,7 @@ var Editor = {
 
     var text = '';
 
-    var _iterator8 = _createForOfIteratorHelper$1(Editor.nodes(editor, {
+    var _iterator8 = _createForOfIteratorHelper$2(Editor.nodes(editor, {
       at: range,
       match: Text.isText,
       voids: voids
@@ -2397,7 +2632,7 @@ var Editor = {
     };
     var skip = true;
 
-    var _iterator9 = _createForOfIteratorHelper$1(Editor.nodes(editor, {
+    var _iterator9 = _createForOfIteratorHelper$2(Editor.nodes(editor, {
       at: before,
       match: Text.isText,
       reverse: true,
@@ -2482,11 +2717,11 @@ var Span = {
   }
 };
 
-function _createForOfIteratorHelper$2(o, allowArrayLike) { var it; if (typeof Symbol === "undefined" || o[Symbol.iterator] == null) { if (Array.isArray(o) || (it = _unsupportedIterableToArray$2(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = o[Symbol.iterator](); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
+function _createForOfIteratorHelper$3(o, allowArrayLike) { var it; if (typeof Symbol === "undefined" || o[Symbol.iterator] == null) { if (Array.isArray(o) || (it = _unsupportedIterableToArray$3(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = o[Symbol.iterator](); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
 
-function _unsupportedIterableToArray$2(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray$2(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray$2(o, minLen); }
+function _unsupportedIterableToArray$3(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray$3(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray$3(o, minLen); }
 
-function _arrayLikeToArray$2(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
+function _arrayLikeToArray$3(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
 var IS_NODE_LIST_CACHE = new WeakMap();
 var Node = {
   /**
@@ -2511,7 +2746,7 @@ var Node = {
   ancestors: function* ancestors(root, path) {
     var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
 
-    var _iterator = _createForOfIteratorHelper$2(Path.ancestors(path, options)),
+    var _iterator = _createForOfIteratorHelper$3(Path.ancestors(path, options)),
         _step;
 
     try {
@@ -2592,7 +2827,7 @@ var Node = {
   descendants: function* descendants(root) {
     var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
 
-    var _iterator2 = _createForOfIteratorHelper$2(Node.nodes(root, options)),
+    var _iterator2 = _createForOfIteratorHelper$3(Node.nodes(root, options)),
         _step2;
 
     try {
@@ -2622,7 +2857,7 @@ var Node = {
   elements: function* elements(root) {
     var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
 
-    var _iterator3 = _createForOfIteratorHelper$2(Node.nodes(root, options)),
+    var _iterator3 = _createForOfIteratorHelper$3(Node.nodes(root, options)),
         _step3;
 
     try {
@@ -2704,7 +2939,7 @@ var Node = {
         }
       });
 
-      var _iterator4 = _createForOfIteratorHelper$2(nodeEntries),
+      var _iterator4 = _createForOfIteratorHelper$3(nodeEntries),
           _step4;
 
       try {
@@ -2851,7 +3086,7 @@ var Node = {
   levels: function* levels(root, path) {
     var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
 
-    var _iterator5 = _createForOfIteratorHelper$2(Path.levels(path, options)),
+    var _iterator5 = _createForOfIteratorHelper$3(Path.levels(path, options)),
         _step5;
 
     try {
@@ -2981,7 +3216,7 @@ var Node = {
   texts: function* texts(root) {
     var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
 
-    var _iterator6 = _createForOfIteratorHelper$2(Node.nodes(root, options)),
+    var _iterator6 = _createForOfIteratorHelper$3(Node.nodes(root, options)),
         _step6;
 
     try {
@@ -3987,11 +4222,57 @@ var RangeRef = {
   }
 };
 
-function _createForOfIteratorHelper$3(o, allowArrayLike) { var it; if (typeof Symbol === "undefined" || o[Symbol.iterator] == null) { if (Array.isArray(o) || (it = _unsupportedIterableToArray$3(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = o[Symbol.iterator](); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
+/*
+  Custom deep equal comparison for Slate nodes.
 
-function _unsupportedIterableToArray$3(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray$3(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray$3(o, minLen); }
+  We don't need general purpose deep equality;
+  Slate only supports plain values, Arrays, and nested objects.
+  Complex values nested inside Arrays are not supported.
 
-function _arrayLikeToArray$3(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
+  Slate objects are designed to be serialised, so
+  missing keys are deliberately normalised to undefined.
+ */
+
+var isDeepEqual = function isDeepEqual(node, another) {
+  for (var key in node) {
+    var a = node[key];
+    var b = another[key];
+
+    if (isPlainObject.isPlainObject(a)) {
+      if (!isDeepEqual(a, b)) return false;
+    } else if (Array.isArray(a) && Array.isArray(b)) {
+      if (a.length !== b.length) return false;
+
+      for (var i = 0; i < a.length; i++) {
+        if (a[i] !== b[i]) return false;
+      }
+
+      return true;
+    } else if (a !== b) {
+      return false;
+    }
+  }
+  /*
+    Deep object equality is only necessary in one direction; in the reverse direction
+    we are only looking for keys that are missing.
+    As above, undefined keys are normalised to missing.
+  */
+
+
+  for (var _key in another) {
+    if (node[_key] === undefined && another[_key] !== undefined) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
+function _createForOfIteratorHelper$4(o, allowArrayLike) { var it; if (typeof Symbol === "undefined" || o[Symbol.iterator] == null) { if (Array.isArray(o) || (it = _unsupportedIterableToArray$4(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = o[Symbol.iterator](); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
+
+function _unsupportedIterableToArray$4(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray$4(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray$4(o, minLen); }
+
+function _arrayLikeToArray$4(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
 
 function ownKeys$5(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); keys.push.apply(keys, symbols); } return keys; }
 
@@ -3999,12 +4280,23 @@ function _objectSpread$5(target) { for (var i = 1; i < arguments.length; i++) { 
 var Text = {
   /**
    * Check if two text nodes are equal.
+   *
+   * When loose is set, the text is not compared. This is
+   * used to check whether sibling text nodes can be merged.
    */
   equals: function equals(text, another) {
     var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
     var _options$loose = options.loose,
         loose = _options$loose === void 0 ? false : _options$loose;
-    return isEqual__default['default'](loose ? omitValue(text) : text, loose ? omitValue(another) : another);
+
+    function omitValue(obj) {
+      var value = obj.value,
+          rest = _objectWithoutProperties(obj, ["value"]);
+
+      return rest;
+    }
+
+    return isDeepEqual(loose ? omitValue(text) : text, loose ? omitValue(another) : another);
   },
 
   /**
@@ -4056,7 +4348,7 @@ var Text = {
   decorations: function decorations(node, _decorations) {
     var leaves = [_objectSpread$5({}, node)];
 
-    var _iterator = _createForOfIteratorHelper$3(_decorations),
+    var _iterator = _createForOfIteratorHelper$4(_decorations),
         _step;
 
     try {
@@ -4075,7 +4367,7 @@ var Text = {
         var next = [];
         var o = 0;
 
-        var _iterator2 = _createForOfIteratorHelper$3(leaves),
+        var _iterator2 = _createForOfIteratorHelper$4(leaves),
             _step2;
 
         try {
@@ -4155,22 +4447,15 @@ var Text = {
   }
 };
 
-function omitValue(obj) {
-  var text = obj.text,
-      rest = _objectWithoutProperties(obj, ["text"]);
-
-  return rest;
-}
-
 function ownKeys$6(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); keys.push.apply(keys, symbols); } return keys; }
 
 function _objectSpread$6(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$6(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$6(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
 
-function _createForOfIteratorHelper$4(o, allowArrayLike) { var it; if (typeof Symbol === "undefined" || o[Symbol.iterator] == null) { if (Array.isArray(o) || (it = _unsupportedIterableToArray$4(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = o[Symbol.iterator](); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
+function _createForOfIteratorHelper$5(o, allowArrayLike) { var it; if (typeof Symbol === "undefined" || o[Symbol.iterator] == null) { if (Array.isArray(o) || (it = _unsupportedIterableToArray$5(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = o[Symbol.iterator](); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
 
-function _unsupportedIterableToArray$4(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray$4(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray$4(o, minLen); }
+function _unsupportedIterableToArray$5(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray$5(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray$5(o, minLen); }
 
-function _arrayLikeToArray$4(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
+function _arrayLikeToArray$5(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
 
 var applyToDraft = function applyToDraft(editor, selection, op) {
   switch (op.type) {
@@ -4188,7 +4473,7 @@ var applyToDraft = function applyToDraft(editor, selection, op) {
         parent.children.splice(index, 0, node);
 
         if (selection) {
-          var _iterator = _createForOfIteratorHelper$4(Range.points(selection)),
+          var _iterator = _createForOfIteratorHelper$5(Range.points(selection)),
               _step;
 
           try {
@@ -4225,7 +4510,7 @@ var applyToDraft = function applyToDraft(editor, selection, op) {
         _node.value = before + text + after;
 
         if (selection) {
-          var _iterator2 = _createForOfIteratorHelper$4(Range.points(selection)),
+          var _iterator2 = _createForOfIteratorHelper$5(Range.points(selection)),
               _step2;
 
           try {
@@ -4272,7 +4557,7 @@ var applyToDraft = function applyToDraft(editor, selection, op) {
         _parent.children.splice(_index, 1);
 
         if (selection) {
-          var _iterator3 = _createForOfIteratorHelper$4(Range.points(selection)),
+          var _iterator3 = _createForOfIteratorHelper$5(Range.points(selection)),
               _step3;
 
           try {
@@ -4321,7 +4606,7 @@ var applyToDraft = function applyToDraft(editor, selection, op) {
         newParent.children.splice(newIndex, 0, _node3);
 
         if (selection) {
-          var _iterator4 = _createForOfIteratorHelper$4(Range.points(selection)),
+          var _iterator4 = _createForOfIteratorHelper$5(Range.points(selection)),
               _step4;
 
           try {
@@ -4354,7 +4639,7 @@ var applyToDraft = function applyToDraft(editor, selection, op) {
 
 
         if (selection) {
-          var _iterator5 = _createForOfIteratorHelper$4(Range.points(selection)),
+          var _iterator5 = _createForOfIteratorHelper$5(Range.points(selection)),
               _step5;
 
           try {
@@ -4372,7 +4657,7 @@ var applyToDraft = function applyToDraft(editor, selection, op) {
 
                 var next = void 0;
 
-                var _iterator6 = _createForOfIteratorHelper$4(Node.texts(editor)),
+                var _iterator6 = _createForOfIteratorHelper$5(Node.texts(editor)),
                     _step6;
 
                 try {
@@ -4394,7 +4679,17 @@ var applyToDraft = function applyToDraft(editor, selection, op) {
                   _iterator6.f();
                 }
 
-                if (_prev) {
+                var preferNext = false;
+
+                if (_prev && next) {
+                  if (Path.equals(next[1], _path4)) {
+                    preferNext = !Path.hasPrevious(next[1]);
+                  } else {
+                    preferNext = Path.common(_prev[1], _path4).length < Path.common(next[1], _path4).length;
+                  }
+                }
+
+                if (_prev && !preferNext) {
                   _point4.path = _prev[1];
                   _point4.offset = _prev[0].value.length;
                 } else if (next) {
@@ -4431,7 +4726,7 @@ var applyToDraft = function applyToDraft(editor, selection, op) {
         _node4.value = _before + _after;
 
         if (selection) {
-          var _iterator7 = _createForOfIteratorHelper$4(Range.points(selection)),
+          var _iterator7 = _createForOfIteratorHelper$5(Range.points(selection)),
               _step7;
 
           try {
@@ -4561,7 +4856,7 @@ var applyToDraft = function applyToDraft(editor, selection, op) {
         _parent4.children.splice(_index4 + 1, 0, newNode);
 
         if (selection) {
-          var _iterator8 = _createForOfIteratorHelper$4(Range.points(selection)),
+          var _iterator8 = _createForOfIteratorHelper$5(Range.points(selection)),
               _step8;
 
           try {
@@ -4612,11 +4907,11 @@ function ownKeys$7(object, enumerableOnly) { var keys = Object.keys(object); if 
 
 function _objectSpread$7(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$7(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$7(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
 
-function _createForOfIteratorHelper$5(o, allowArrayLike) { var it; if (typeof Symbol === "undefined" || o[Symbol.iterator] == null) { if (Array.isArray(o) || (it = _unsupportedIterableToArray$5(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = o[Symbol.iterator](); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
+function _createForOfIteratorHelper$6(o, allowArrayLike) { var it; if (typeof Symbol === "undefined" || o[Symbol.iterator] == null) { if (Array.isArray(o) || (it = _unsupportedIterableToArray$6(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = o[Symbol.iterator](); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
 
-function _unsupportedIterableToArray$5(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray$5(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray$5(o, minLen); }
+function _unsupportedIterableToArray$6(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray$6(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray$6(o, minLen); }
 
-function _arrayLikeToArray$5(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
+function _arrayLikeToArray$6(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
 var NodeTransforms = {
   /**
    * Insert nodes at a specific location in the Editor.
@@ -4739,7 +5034,7 @@ var NodeTransforms = {
         return;
       }
 
-      var _iterator = _createForOfIteratorHelper$5(nodes),
+      var _iterator = _createForOfIteratorHelper$6(nodes),
           _step;
 
       try {
@@ -5025,9 +5320,10 @@ var NodeTransforms = {
       // of merging the two. This is a common rich text editor behavior to
       // prevent losing formatting when deleting entire nodes when you have a
       // hanging selection.
+      // if prevNode is first child in parent,don't remove it.
 
 
-      if (Element.isElement(prevNode) && Editor.isEmpty(editor, prevNode) || Text.isText(prevNode) && prevNode.value === '') {
+      if (Element.isElement(prevNode) && Editor.isEmpty(editor, prevNode) || Text.isText(prevNode) && prevNode.value === '' && prevPath[prevPath.length - 1] !== 0) {
         Transforms.removeNodes(editor, {
           at: prevPath,
           voids: voids
@@ -5238,7 +5534,7 @@ var NodeTransforms = {
         }
       }
 
-      var _iterator2 = _createForOfIteratorHelper$5(Editor.nodes(editor, {
+      var _iterator2 = _createForOfIteratorHelper$6(Editor.nodes(editor, {
         at: at,
         match: match,
         mode: mode,
@@ -5259,19 +5555,23 @@ var NodeTransforms = {
             continue;
           }
 
+          var hasChanges = false;
+
           for (var k in props) {
             if (k === 'children' || k === 'text') {
               continue;
             }
 
             if (props[k] !== node[k]) {
-              // Omit new properties from the old property list rather than set them to undefined
-              if (node.hasOwnProperty(k)) properties[k] = node[k];
-              newProperties[k] = props[k];
+              hasChanges = true; // Omit new properties from the old properties list
+
+              if (node.hasOwnProperty(k)) properties[k] = node[k]; // Omit properties that have been removed from the new properties list
+
+              if (props[k] != null) newProperties[k] = props[k];
             }
           }
 
-          if (Object.keys(newProperties).length !== 0) {
+          if (hasChanges) {
             editor.apply({
               type: 'set_node',
               path: path,
@@ -5400,7 +5700,7 @@ var NodeTransforms = {
       var lowestPath = at.path.slice(0, depth);
       var position = height === 0 ? at.offset : at.path[depth] + nudge;
 
-      var _iterator3 = _createForOfIteratorHelper$5(Editor.levels(editor, {
+      var _iterator3 = _createForOfIteratorHelper$6(Editor.levels(editor, {
         at: lowestPath,
         reverse: true,
         voids: voids
@@ -5464,7 +5764,7 @@ var NodeTransforms = {
 
     var obj = {};
 
-    var _iterator4 = _createForOfIteratorHelper$5(props),
+    var _iterator4 = _createForOfIteratorHelper$6(props),
         _step4;
 
     try {
@@ -5524,33 +5824,45 @@ var NodeTransforms = {
             p = _ref10[1];
 
         return Editor.pathRef(editor, p);
-      });
+      } // unwrapNode will call liftNode which does not support splitting the node when nested.
+      // If we do not reverse the order and call it from top to the bottom, it will remove all blocks
+      // that wrap target node. So we reverse the order.
+      ).reverse();
 
-      var _loop = function _loop() {
-        var pathRef = _pathRefs4[_i4];
-        var path = pathRef.unref();
+      var _iterator5 = _createForOfIteratorHelper$6(pathRefs),
+          _step5;
 
-        var _Editor$node3 = Editor.node(editor, path),
-            _Editor$node4 = _slicedToArray(_Editor$node3, 1),
-            node = _Editor$node4[0];
+      try {
+        var _loop = function _loop() {
+          var pathRef = _step5.value;
+          var path = pathRef.unref();
 
-        var range = Editor.range(editor, path);
+          var _Editor$node3 = Editor.node(editor, path),
+              _Editor$node4 = _slicedToArray(_Editor$node3, 1),
+              node = _Editor$node4[0];
 
-        if (split && rangeRef) {
-          range = Range.intersection(rangeRef.current, range);
+          var range = Editor.range(editor, path);
+
+          if (split && rangeRef) {
+            range = Range.intersection(rangeRef.current, range);
+          }
+
+          Transforms.liftNodes(editor, {
+            at: range,
+            match: function match(n) {
+              return Element.isAncestor(node) && node.children.includes(n);
+            },
+            voids: voids
+          });
+        };
+
+        for (_iterator5.s(); !(_step5 = _iterator5.n()).done;) {
+          _loop();
         }
-
-        Transforms.liftNodes(editor, {
-          at: range,
-          match: function match(n) {
-            return Element.isAncestor(node) && node.children.includes(n);
-          },
-          voids: voids
-        });
-      };
-
-      for (var _i4 = 0, _pathRefs4 = pathRefs; _i4 < _pathRefs4.length; _i4++) {
-        _loop();
+      } catch (err) {
+        _iterator5.e(err);
+      } finally {
+        _iterator5.f();
       }
 
       if (rangeRef) {
@@ -5631,8 +5943,8 @@ var NodeTransforms = {
         voids: voids
       }));
 
-      for (var _i5 = 0, _roots = roots; _i5 < _roots.length; _i5++) {
-        var _roots$_i = _slicedToArray(_roots[_i5], 2),
+      for (var _i4 = 0, _roots = roots; _i4 < _roots.length; _i4++) {
+        var _roots$_i = _slicedToArray(_roots[_i4], 2),
             rootPath = _roots$_i[1];
 
         var a = Range.isRange(at) ? Range.intersection(at, Editor.range(editor, rootPath)) : at;
@@ -5649,7 +5961,7 @@ var NodeTransforms = {
         }));
 
         if (matches.length > 0) {
-          (function () {
+          var _ret = function () {
             var _matches = _slicedToArray(matches, 1),
                 first = _matches[0];
 
@@ -5660,6 +5972,11 @@ var NodeTransforms = {
 
             var _last = _slicedToArray(last, 2),
                 lastPath = _last[1];
+
+            if (firstPath.length === 0 && lastPath.length === 0) {
+              // if there's no matching parent - usually means the node is an editor - don't do anything
+              return "continue";
+            }
 
             var commonPath = Path.equals(firstPath, lastPath) ? Path.parent(firstPath) : Path.common(firstPath, lastPath);
             var range = Editor.range(editor, firstPath, lastPath);
@@ -5687,7 +6004,9 @@ var NodeTransforms = {
               to: wrapperPath.concat(0),
               voids: voids
             });
-          })();
+          }();
+
+          if (_ret === "continue") continue;
         }
       }
     });
@@ -5924,11 +6243,11 @@ var SelectionTransforms = {
   }
 };
 
-function _createForOfIteratorHelper$6(o, allowArrayLike) { var it; if (typeof Symbol === "undefined" || o[Symbol.iterator] == null) { if (Array.isArray(o) || (it = _unsupportedIterableToArray$6(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = o[Symbol.iterator](); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
+function _createForOfIteratorHelper$7(o, allowArrayLike) { var it; if (typeof Symbol === "undefined" || o[Symbol.iterator] == null) { if (Array.isArray(o) || (it = _unsupportedIterableToArray$7(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = o[Symbol.iterator](); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
 
-function _unsupportedIterableToArray$6(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray$6(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray$6(o, minLen); }
+function _unsupportedIterableToArray$7(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray$7(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray$7(o, minLen); }
 
-function _arrayLikeToArray$6(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
+function _arrayLikeToArray$7(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
 var TextTransforms = {
   /**
    * Delete content in the editor.
@@ -6059,7 +6378,7 @@ var TextTransforms = {
       var matches = [];
       var lastPath;
 
-      var _iterator = _createForOfIteratorHelper$6(Editor.nodes(editor, {
+      var _iterator = _createForOfIteratorHelper$7(Editor.nodes(editor, {
         at: at,
         voids: voids
       })),
@@ -6287,7 +6606,7 @@ var TextTransforms = {
         return true;
       };
 
-      var _iterator2 = _createForOfIteratorHelper$6(Node.nodes({
+      var _iterator2 = _createForOfIteratorHelper$7(Node.nodes({
         children: fragment
       }, {
         pass: matcher

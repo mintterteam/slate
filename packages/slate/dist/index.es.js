@@ -1,7 +1,5 @@
 import { isPlainObject } from 'is-plain-object';
-import { reverse } from 'esrever';
 import { produce, createDraft, finishDraft, isDraft } from 'immer';
-import isEqual from 'fast-deep-equal';
 
 function _defineProperty(obj, key, value) {
   if (key in obj) {
@@ -231,6 +229,7 @@ var createEditor = () => {
 
       if (Element.isElement(node) && node.children.length === 0) {
         var child = {
+          type: 'text',
           value: ''
         };
         Transforms.insertNodes(editor, child, {
@@ -268,6 +267,7 @@ var createEditor = () => {
           if (editor.isInline(_child)) {
             if (prev == null || !Text.isText(prev)) {
               var newChild = {
+                type: 'text',
                 value: ''
               };
               Transforms.insertNodes(editor, newChild, {
@@ -277,6 +277,7 @@ var createEditor = () => {
               n++;
             } else if (isLast) {
               var _newChild = {
+                type: 'text',
                 value: ''
               };
               Transforms.insertNodes(editor, _newChild, {
@@ -297,13 +298,13 @@ var createEditor = () => {
                 voids: true
               });
               n--;
-            } else if (prev.value === '') {
+            } else if (prev.value == '') {
               Transforms.removeNodes(editor, {
                 at: path.concat(n - 1),
                 voids: true
               });
               n--;
-            } else if (isLast && _child.value === '') {
+            } else if (_child.value == '') {
               Transforms.removeNodes(editor, {
                 at: path.concat(n),
                 voids: true
@@ -481,75 +482,131 @@ function _objectWithoutProperties(source, excluded) {
 var SPACE = /\s/;
 var PUNCTUATION = /[\u0021-\u0023\u0025-\u002A\u002C-\u002F\u003A\u003B\u003F\u0040\u005B-\u005D\u005F\u007B\u007D\u00A1\u00A7\u00AB\u00B6\u00B7\u00BB\u00BF\u037E\u0387\u055A-\u055F\u0589\u058A\u05BE\u05C0\u05C3\u05C6\u05F3\u05F4\u0609\u060A\u060C\u060D\u061B\u061E\u061F\u066A-\u066D\u06D4\u0700-\u070D\u07F7-\u07F9\u0830-\u083E\u085E\u0964\u0965\u0970\u0AF0\u0DF4\u0E4F\u0E5A\u0E5B\u0F04-\u0F12\u0F14\u0F3A-\u0F3D\u0F85\u0FD0-\u0FD4\u0FD9\u0FDA\u104A-\u104F\u10FB\u1360-\u1368\u1400\u166D\u166E\u169B\u169C\u16EB-\u16ED\u1735\u1736\u17D4-\u17D6\u17D8-\u17DA\u1800-\u180A\u1944\u1945\u1A1E\u1A1F\u1AA0-\u1AA6\u1AA8-\u1AAD\u1B5A-\u1B60\u1BFC-\u1BFF\u1C3B-\u1C3F\u1C7E\u1C7F\u1CC0-\u1CC7\u1CD3\u2010-\u2027\u2030-\u2043\u2045-\u2051\u2053-\u205E\u207D\u207E\u208D\u208E\u2329\u232A\u2768-\u2775\u27C5\u27C6\u27E6-\u27EF\u2983-\u2998\u29D8-\u29DB\u29FC\u29FD\u2CF9-\u2CFC\u2CFE\u2CFF\u2D70\u2E00-\u2E2E\u2E30-\u2E3B\u3001-\u3003\u3008-\u3011\u3014-\u301F\u3030\u303D\u30A0\u30FB\uA4FE\uA4FF\uA60D-\uA60F\uA673\uA67E\uA6F2-\uA6F7\uA874-\uA877\uA8CE\uA8CF\uA8F8-\uA8FA\uA92E\uA92F\uA95F\uA9C1-\uA9CD\uA9DE\uA9DF\uAA5C-\uAA5F\uAADE\uAADF\uAAF0\uAAF1\uABEB\uFD3E\uFD3F\uFE10-\uFE19\uFE30-\uFE52\uFE54-\uFE61\uFE63\uFE68\uFE6A\uFE6B\uFF01-\uFF03\uFF05-\uFF0A\uFF0C-\uFF0F\uFF1A\uFF1B\uFF1F\uFF20\uFF3B-\uFF3D\uFF3F\uFF5B\uFF5D\uFF5F-\uFF65]/;
 var CHAMELEON = /['\u2018\u2019]/;
-var SURROGATE_START = 0xd800;
-var SURROGATE_END = 0xdfff;
-var ZERO_WIDTH_JOINER = 0x200d;
 /**
  * Get the distance to the end of the first character in a string of text.
  */
 
-var getCharacterDistance = text => {
-  var offset = 0; // prev types:
-  // SURR: surrogate pair
-  // MOD: modifier (technically also surrogate pair)
+var getCharacterDistance = function getCharacterDistance(str) {
+  var isRTL = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
+  var isLTR = !isRTL;
+  var dist = 0; // prev types:
+  // NSEQ: non sequenceable codepoint.
+  // MOD: modifier
   // ZWJ: zero width joiner
   // VAR: variation selector
-  // BMP: sequenceable character from basic multilingual plane
+  // BMP: sequenceable codepoint from basic multilingual plane
+  // RI: regional indicator
+  // KC: keycap
+  // TAG: tag
 
   var prev = null;
-  var charCode = text.charCodeAt(0);
+  var codepoints = isLTR ? str : codepointsIteratorRTL(str);
 
-  while (charCode) {
-    if (isSurrogate(charCode)) {
-      var modifier = isModifier(charCode, text, offset); // Early returns are the heart of this function, where we decide if previous and current
-      // codepoints should form a single character (in terms of how many of them should selection
-      // jump over).
+  for (var codepoint of codepoints) {
+    var code = codepoint.codePointAt(0);
+    if (!code) break; // Check if codepoint is part of a sequence.
 
-      if (prev === 'SURR' || prev === 'BMP') {
-        break;
-      }
-
-      offset += 2;
-      prev = modifier ? 'MOD' : 'SURR';
-      charCode = text.charCodeAt(offset); // Absolutely fine to `continue` without any checks because if `charCode` is NaN (which
-      // is the case when out of `text` range), next `while` loop won"t execute and we"re done.
-
-      continue;
-    }
-
-    if (charCode === ZERO_WIDTH_JOINER) {
-      offset += 1;
+    if (isZWJ(code)) {
+      dist += codepoint.length;
       prev = 'ZWJ';
-      charCode = text.charCodeAt(offset);
       continue;
     }
 
-    if (isBMPEmoji(charCode)) {
-      if (prev && prev !== 'ZWJ' && prev !== 'VAR') {
+    var [isKeycapStart, isKeycapEnd] = isLTR ? [isKeycap, isCombiningEnclosingKeycap] : [isCombiningEnclosingKeycap, isKeycap];
+
+    if (isKeycapStart(code)) {
+      if (prev === 'KC') {
         break;
       }
 
-      offset += 1;
-      prev = 'BMP';
-      charCode = text.charCodeAt(offset);
+      dist += codepoint.length;
+      prev = 'KC';
       continue;
     }
 
-    if (isVariationSelector(charCode)) {
-      if (prev && prev !== 'ZWJ') {
+    if (isKeycapEnd(code)) {
+      dist += codepoint.length;
+      break;
+    }
+
+    if (isVariationSelector(code)) {
+      dist += codepoint.length;
+
+      if (isLTR && prev === 'BMP') {
         break;
       }
 
-      offset += 1;
       prev = 'VAR';
-      charCode = text.charCodeAt(offset);
+      continue;
+    }
+
+    if (isBMPEmoji(code)) {
+      if (isLTR && prev && prev !== 'ZWJ' && prev !== 'VAR') {
+        break;
+      }
+
+      dist += codepoint.length;
+
+      if (isRTL && prev === 'VAR') {
+        break;
+      }
+
+      prev = 'BMP';
+      continue;
+    }
+
+    if (isModifier(code)) {
+      dist += codepoint.length;
+      prev = 'MOD';
+      continue;
+    }
+
+    var [isTagStart, isTagEnd] = isLTR ? [isBlackFlag, isCancelTag] : [isCancelTag, isBlackFlag];
+
+    if (isTagStart(code)) {
+      if (prev === 'TAG') break;
+      dist += codepoint.length;
+      prev = 'TAG';
+      continue;
+    }
+
+    if (isTagEnd(code)) {
+      dist += codepoint.length;
+      break;
+    }
+
+    if (prev === 'TAG' && isTag(code)) {
+      dist += codepoint.length;
+      continue;
+    }
+
+    if (isRegionalIndicator(code)) {
+      dist += codepoint.length;
+
+      if (prev === 'RI') {
+        break;
+      }
+
+      prev = 'RI';
+      continue;
+    }
+
+    if (!isBMP(code)) {
+      // If previous code point is not sequenceable, it means we are not in a
+      // sequence.
+      if (prev === 'NSEQ') {
+        break;
+      }
+
+      dist += codepoint.length;
+      prev = 'NSEQ';
       continue;
     } // Modifier 'groups up' with what ever character is before that (even whitespace), need to
     // look ahead.
 
 
-    if (prev === 'MOD') {
-      offset += 1;
+    if (isLTR && prev === 'MOD') {
+      dist += codepoint.length;
       break;
     } // If while loop ever gets here, we're done (e.g latin chars).
 
@@ -557,43 +614,56 @@ var getCharacterDistance = text => {
     break;
   }
 
-  return offset || 1;
+  return dist || 1;
 };
 /**
  * Get the distance to the end of the first word in a string of text.
  */
 
-var getWordDistance = text => {
-  var length = 0;
-  var i = 0;
+var getWordDistance = function getWordDistance(text) {
+  var isRTL = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
+  var dist = 0;
   var started = false;
-  var char;
 
-  while (char = text.charAt(i)) {
-    var l = getCharacterDistance(char);
-    char = text.slice(i, i + l);
-    var rest = text.slice(i + l);
+  while (text.length > 0) {
+    var charDist = getCharacterDistance(text, isRTL);
+    var [char, remaining] = splitByCharacterDistance(text, charDist, isRTL);
 
-    if (isWordCharacter(char, rest)) {
+    if (isWordCharacter(char, remaining, isRTL)) {
       started = true;
-      length += l;
+      dist += charDist;
     } else if (!started) {
-      length += l;
+      dist += charDist;
     } else {
       break;
     }
 
-    i += l;
+    text = remaining;
   }
 
-  return length;
+  return dist;
+};
+/**
+ * Split a string in two parts at a given distance starting from the end when
+ * `isRTL` is set to `true`.
+ */
+
+var splitByCharacterDistance = (str, dist, isRTL) => {
+  if (isRTL) {
+    var at = str.length - dist;
+    return [str.slice(at, str.length), str.slice(0, at)];
+  }
+
+  return [str.slice(0, dist), str.slice(dist)];
 };
 /**
  * Check if a character is a word character. The `remaining` argument is used
  * because sometimes you must read subsequent characters to truly determine it.
  */
 
-var isWordCharacter = (char, remaining) => {
+var isWordCharacter = function isWordCharacter(char, remaining) {
+  var isRTL = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
+
   if (SPACE.test(char)) {
     return false;
   } // Chameleons count as word characters as long as they're in a word, so
@@ -601,12 +671,10 @@ var isWordCharacter = (char, remaining) => {
 
 
   if (CHAMELEON.test(char)) {
-    var next = remaining.charAt(0);
-    var length = getCharacterDistance(next);
-    next = remaining.slice(0, length);
-    var rest = remaining.slice(length);
+    var charDist = getCharacterDistance(remaining, isRTL);
+    var [nextChar, nextRemaining] = splitByCharacterDistance(remaining, charDist, isRTL);
 
-    if (isWordCharacter(next, rest)) {
+    if (isWordCharacter(nextChar, nextRemaining, isRTL)) {
       return true;
     }
   }
@@ -618,25 +686,14 @@ var isWordCharacter = (char, remaining) => {
   return true;
 };
 /**
- * Determines if `code` is a surrogate
- */
-
-
-var isSurrogate = code => SURROGATE_START <= code && code <= SURROGATE_END;
-/**
  * Does `code` form Modifier with next one.
  *
  * https://emojipedia.org/modifiers/
  */
 
 
-var isModifier = (code, text, offset) => {
-  if (code === 0xd83c) {
-    var next = text.charCodeAt(offset + 1);
-    return next <= 0xdfff && next >= 0xdffb;
-  }
-
-  return false;
+var isModifier = code => {
+  return code >= 0x1f3fb && code <= 0x1f3ff;
 };
 /**
  * Is `code` a Variation Selector.
@@ -647,6 +704,28 @@ var isModifier = (code, text, offset) => {
 
 var isVariationSelector = code => {
   return code <= 0xfe0f && code >= 0xfe00;
+};
+/**
+ * Is `code` a code point used in keycap sequence.
+ *
+ * https://emojipedia.org/emoji-keycap-sequence/
+ */
+
+
+var isKeycap = code => {
+  return code >= 0x30 && code <= 0x39 || // digits
+  code === 0x23 || // number sign
+  code === 0x2a;
+};
+/**
+ * Is `code` a Combining Enclosing Keycap.
+ *
+ * https://emojipedia.org/combining-enclosing-keycap/
+ */
+
+
+var isCombiningEnclosingKeycap = code => {
+  return code === 0x20e3;
 };
 /**
  * Is `code` one of the BMP codes used in emoji sequences.
@@ -666,8 +745,133 @@ var isBMPEmoji = code => {
   code === 0x2620 || // scull (☠)
   code === 0x2695 || // medical (⚕)
   code === 0x2708 || // plane (✈️)
-  code === 0x25ef // large circle (◯)
+  code === 0x25ef || // large circle (◯)
+  code === 0x2b06 || // up arrow (⬆)
+  code === 0x2197 || // up-right arrow (↗)
+  code === 0x27a1 || // right arrow (➡)
+  code === 0x2198 || // down-right arrow (↘)
+  code === 0x2b07 || // down arrow (⬇)
+  code === 0x2199 || // down-left arrow (↙)
+  code === 0x2b05 || // left arrow (⬅)
+  code === 0x2196 || // up-left arrow (↖)
+  code === 0x2195 || // up-down arrow (↕)
+  code === 0x2194 || // left-right arrow (↔)
+  code === 0x21a9 || // right arrow curving left (↩)
+  code === 0x21aa || // left arrow curving right (↪)
+  code === 0x2934 || // right arrow curving up (⤴)
+  code === 0x2935 // right arrow curving down (⤵)
   ;
+};
+/**
+ * Is `code` a Regional Indicator.
+ *
+ * https://en.wikipedia.org/wiki/Regional_indicator_symbol
+ */
+
+
+var isRegionalIndicator = code => {
+  return code >= 0x1f1e6 && code <= 0x1f1ff;
+};
+/**
+ * Is `code` from basic multilingual plane.
+ *
+ * https://codepoints.net/basic_multilingual_plane
+ */
+
+
+var isBMP = code => {
+  return code <= 0xffff;
+};
+/**
+ * Is `code` a Zero Width Joiner.
+ *
+ * https://emojipedia.org/zero-width-joiner/
+ */
+
+
+var isZWJ = code => {
+  return code === 0x200d;
+};
+/**
+ * Is `code` a Black Flag.
+ *
+ * https://emojipedia.org/black-flag/
+ */
+
+
+var isBlackFlag = code => {
+  return code === 0x1f3f4;
+};
+/**
+ * Is `code` a Tag.
+ *
+ * https://emojipedia.org/emoji-tag-sequence/
+ */
+
+
+var isTag = code => {
+  return code >= 0xe0000 && code <= 0xe007f;
+};
+/**
+ * Is `code` a Cancel Tag.
+ *
+ * https://emojipedia.org/cancel-tag/
+ */
+
+
+var isCancelTag = code => {
+  return code === 0xe007f;
+};
+/**
+ * Iterate on codepoints from right to left.
+ */
+
+
+var codepointsIteratorRTL = function* codepointsIteratorRTL(str) {
+  var end = str.length - 1;
+
+  for (var i = 0; i < str.length; i++) {
+    var char1 = str.charAt(end - i);
+
+    if (isLowSurrogate(char1.charCodeAt(0))) {
+      var char2 = str.charAt(end - i - 1);
+
+      if (isHighSurrogate(char2.charCodeAt(0))) {
+        yield char2 + char1;
+        i++;
+        continue;
+      }
+    }
+
+    yield char1;
+  }
+};
+/**
+ * Is `charCode` a high surrogate.
+ *
+ * https://en.wikipedia.org/wiki/Universal_Character_Set_characters#Surrogates
+ */
+
+var isHighSurrogate = charCode => {
+  return charCode >= 0xd800 && charCode <= 0xdbff;
+};
+/**
+ * Is `charCode` a low surrogate.
+ *
+ * https://en.wikipedia.org/wiki/Universal_Character_Set_characters#Surrogates
+ */
+
+
+var isLowSurrogate = charCode => {
+  return charCode >= 0xdc00 && charCode <= 0xdfff;
+};
+
+/**
+ * Shared the function with isElementType utility
+ */
+
+var isElement = value => {
+  return isPlainObject(value) && Node.isNodeList(value.children) && !Editor.isEditor(value);
 };
 
 var Element = {
@@ -681,9 +885,7 @@ var Element = {
   /**
    * Check if a value implements the `Element` interface.
    */
-  isElement(value) {
-    return isPlainObject(value) && Node.isNodeList(value.children) && !Editor.isEditor(value);
-  },
+  isElement,
 
   /**
    * Check if a value is an array of `Element` objects.
@@ -697,6 +899,15 @@ var Element = {
    */
   isElementProps(props) {
     return props.children !== undefined;
+  },
+
+  /**
+   * Check if a value implements the `Element` interface and has elementKey with selected value.
+   * Default it check to `type` key value
+   */
+  isElementType: function isElementType(value, elementVal) {
+    var elementKey = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 'type';
+    return isElement(value) && value[elementKey] === elementVal;
   },
 
   /**
@@ -1380,17 +1591,17 @@ var Editor = {
       */
       for (var dirtyPath of getDirtyPaths(editor)) {
         if (Node.has(editor, dirtyPath)) {
-          var [node, _] = Editor.node(editor, dirtyPath); // Add a text child to elements with no children.
-          // This is safe to do in any order, by definition it can't cause other paths to change.
+          var entry = Editor.node(editor, dirtyPath);
+          var [node, _] = entry;
+          /*
+            The default normalizer inserts an empty text node in this scenario, but it can be customised.
+            So there is some risk here.
+                       As long as the normalizer only inserts child nodes for this case it is safe to do in any order;
+            by definition adding children to an empty node can't cause other paths to change.
+          */
 
           if (Element.isElement(node) && node.children.length === 0) {
-            var child = {
-              value: ''
-            };
-            Transforms.insertNodes(editor, child, {
-              at: dirtyPath.concat(0),
-              voids: true
-            });
+            editor.normalizeNode(entry);
           }
         }
       }
@@ -1408,8 +1619,9 @@ var Editor = {
 
 
         if (Node.has(editor, _dirtyPath)) {
-          var entry = Editor.node(editor, _dirtyPath);
-          editor.normalizeNode(entry);
+          var _entry = Editor.node(editor, _dirtyPath);
+
+          editor.normalizeNode(_entry);
         }
 
         m++;
@@ -1616,7 +1828,7 @@ var Editor = {
     var {
       at = editor.selection,
       unit = 'offset',
-      reverse: reverse$1 = false,
+      reverse = false,
       voids = false
     } = options;
 
@@ -1644,7 +1856,7 @@ var Editor = {
 
     var range = Editor.range(editor, at);
     var [start, end] = Range.edges(range);
-    var first = reverse$1 ? end : start;
+    var first = reverse ? end : start;
     var isNewBlock = false;
     var blockText = '';
     var distance = 0; // Distance for leafText to catch up to blockText.
@@ -1659,7 +1871,7 @@ var Editor = {
 
     for (var [node, path] of Editor.nodes(editor, {
       at,
-      reverse: reverse$1,
+      reverse,
       voids
     })) {
       /*
@@ -1698,7 +1910,6 @@ var Editor = {
           }, {
             voids
           });
-          blockText = reverse$1 ? reverse(blockText) : blockText;
           isNewBlock = true;
         }
       }
@@ -1716,11 +1927,11 @@ var Editor = {
         // Reset `leafText` counters for new text node.
 
         if (isFirst) {
-          leafTextRemaining = reverse$1 ? first.offset : node.value.length - first.offset;
+          leafTextRemaining = reverse ? first.offset : node.value.length - first.offset;
           leafTextOffset = first.offset; // Works for reverse too.
         } else {
           leafTextRemaining = node.value.length;
-          leafTextOffset = reverse$1 ? leafTextRemaining : 0;
+          leafTextOffset = reverse ? leafTextRemaining : 0;
         } // Yield position at the start of node (potentially).
 
 
@@ -1739,12 +1950,14 @@ var Editor = {
           // otherwise advance blockText forward by the new `distance`.
           if (distance === 0) {
             if (blockText === '') break;
-            distance = calcDistance(blockText, unit);
-            blockText = blockText.slice(distance);
+            distance = calcDistance(blockText, unit, reverse); // Split the string at the previously found distance and use the
+            // remaining string for the next iteration.
+
+            blockText = splitByCharacterDistance(blockText, distance, reverse)[1];
           } // Advance `leafText` by the current `distance`.
 
 
-          leafTextOffset = reverse$1 ? leafTextOffset - distance : leafTextOffset + distance;
+          leafTextOffset = reverse ? leafTextOffset - distance : leafTextOffset + distance;
           leafTextRemaining = leafTextRemaining - distance; // If `leafText` is exhausted, break to get a new leaf node
           // and set distance to the overflow amount, so we'll (maybe)
           // catch up to blockText in the next leaf text node.
@@ -1771,11 +1984,11 @@ var Editor = {
     // Return the distance in offsets for a step of size `unit` on given string.
 
 
-    function calcDistance(text, unit) {
+    function calcDistance(text, unit, reverse) {
       if (unit === 'character') {
-        return getCharacterDistance(text);
+        return getCharacterDistance(text, reverse);
       } else if (unit === 'word') {
-        return getWordDistance(text);
+        return getWordDistance(text, reverse);
       } else if (unit === 'line' || unit === 'block') {
         return text.length;
       }
@@ -3499,19 +3712,75 @@ var RangeRef = {
 
 };
 
+/*
+  Custom deep equal comparison for Slate nodes.
+
+  We don't need general purpose deep equality;
+  Slate only supports plain values, Arrays, and nested objects.
+  Complex values nested inside Arrays are not supported.
+
+  Slate objects are designed to be serialised, so
+  missing keys are deliberately normalised to undefined.
+ */
+
+var isDeepEqual = (node, another) => {
+  for (var key in node) {
+    var a = node[key];
+    var b = another[key];
+
+    if (isPlainObject(a)) {
+      if (!isDeepEqual(a, b)) return false;
+    } else if (Array.isArray(a) && Array.isArray(b)) {
+      if (a.length !== b.length) return false;
+
+      for (var i = 0; i < a.length; i++) {
+        if (a[i] !== b[i]) return false;
+      }
+
+      return true;
+    } else if (a !== b) {
+      return false;
+    }
+  }
+  /*
+    Deep object equality is only necessary in one direction; in the reverse direction
+    we are only looking for keys that are missing.
+    As above, undefined keys are normalised to missing.
+  */
+
+
+  for (var _key in another) {
+    if (node[_key] === undefined && another[_key] !== undefined) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
 function ownKeys$5(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); keys.push.apply(keys, symbols); } return keys; }
 
 function _objectSpread$5(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$5(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$5(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
 var Text = {
   /**
    * Check if two text nodes are equal.
+   *
+   * When loose is set, the text is not compared. This is
+   * used to check whether sibling text nodes can be merged.
    */
   equals(text, another) {
     var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
     var {
       loose = false
     } = options;
-    return isEqual(loose ? omitValue(text) : text, loose ? omitValue(another) : another);
+
+    function omitValue(obj) {
+      var rest = _objectWithoutProperties(obj, ["value"]);
+
+      return rest;
+    }
+
+    return isDeepEqual(loose ? omitValue(text) : text, loose ? omitValue(another) : another);
   },
 
   /**
@@ -3635,12 +3904,6 @@ var Text = {
   }
 
 };
-
-function omitValue(obj) {
-  var rest = _objectWithoutProperties(obj, ["text"]);
-
-  return rest;
-}
 
 function ownKeys$6(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); keys.push.apply(keys, symbols); } return keys; }
 
@@ -3803,7 +4066,17 @@ var applyToDraft = (editor, selection, op) => {
                 }
               }
 
-              if (_prev) {
+              var preferNext = false;
+
+              if (_prev && next) {
+                if (Path.equals(next[1], _path4)) {
+                  preferNext = !Path.hasPrevious(next[1]);
+                } else {
+                  preferNext = Path.common(_prev[1], _path4).length < Path.common(next[1], _path4).length;
+                }
+              }
+
+              if (_prev && !preferNext) {
                 _point4.path = _prev[1];
                 _point4.offset = _prev[0].value.length;
               } else if (next) {
@@ -4351,9 +4624,10 @@ var NodeTransforms = {
       // of merging the two. This is a common rich text editor behavior to
       // prevent losing formatting when deleting entire nodes when you have a
       // hanging selection.
+      // if prevNode is first child in parent,don't remove it.
 
 
-      if (Element.isElement(prevNode) && Editor.isEmpty(editor, prevNode) || Text.isText(prevNode) && prevNode.value === '') {
+      if (Element.isElement(prevNode) && Editor.isEmpty(editor, prevNode) || Text.isText(prevNode) && prevNode.value === '' && prevPath[prevPath.length - 1] !== 0) {
         Transforms.removeNodes(editor, {
           at: prevPath,
           voids
@@ -4557,19 +4831,23 @@ var NodeTransforms = {
           continue;
         }
 
+        var hasChanges = false;
+
         for (var k in props) {
           if (k === 'children' || k === 'text') {
             continue;
           }
 
           if (props[k] !== node[k]) {
-            // Omit new properties from the old property list rather than set them to undefined
-            if (node.hasOwnProperty(k)) properties[k] = node[k];
-            newProperties[k] = props[k];
+            hasChanges = true; // Omit new properties from the old properties list
+
+            if (node.hasOwnProperty(k)) properties[k] = node[k]; // Omit properties that have been removed from the new properties list
+
+            if (props[k] != null) newProperties[k] = props[k];
           }
         }
 
-        if (Object.keys(newProperties).length !== 0) {
+        if (hasChanges) {
           editor.apply({
             type: 'set_node',
             path,
@@ -4774,7 +5052,10 @@ var NodeTransforms = {
       var pathRefs = Array.from(matches, (_ref5) => {
         var [, p] = _ref5;
         return Editor.pathRef(editor, p);
-      });
+      } // unwrapNode will call liftNode which does not support splitting the node when nested.
+      // If we do not reverse the order and call it from top to the bottom, it will remove all blocks
+      // that wrap target node. So we reverse the order.
+      ).reverse();
 
       var _loop = function _loop(pathRef) {
         var path = pathRef.unref();
@@ -4877,11 +5158,17 @@ var NodeTransforms = {
         }));
 
         if (matches.length > 0) {
-          (function () {
+          var _ret = function () {
             var [first] = matches;
             var last = matches[matches.length - 1];
             var [, firstPath] = first;
             var [, lastPath] = last;
+
+            if (firstPath.length === 0 && lastPath.length === 0) {
+              // if there's no matching parent - usually means the node is an editor - don't do anything
+              return "continue";
+            }
+
             var commonPath = Path.equals(firstPath, lastPath) ? Path.parent(firstPath) : Path.common(firstPath, lastPath);
             var range = Editor.range(editor, firstPath, lastPath);
             var commonNodeEntry = Editor.node(editor, commonPath);
@@ -4903,7 +5190,9 @@ var NodeTransforms = {
               to: wrapperPath.concat(0),
               voids
             });
-          })();
+          }();
+
+          if (_ret === "continue") continue;
         }
       }
     });
