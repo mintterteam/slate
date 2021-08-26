@@ -6,11 +6,11 @@ import {
   ELEMENT_TO_NODE,
   IS_FOCUSED,
   IS_READ_ONLY,
-  KEY_TO_ELEMENT,
   NODE_TO_INDEX,
   NODE_TO_KEY,
   NODE_TO_PARENT,
   EDITOR_TO_WINDOW,
+  EDITOR_TO_KEY_TO_ELEMENT,
 } from '../utils/weak-maps'
 import {
   DOMElement,
@@ -106,23 +106,14 @@ export const ReactEditor = {
     const el = ReactEditor.toDOMNode(editor, editor)
     const root = el.getRootNode()
 
-    // The below exception will always be thrown for iframes because the document inside an iframe
-    // does not inherit it's prototype from the parent document, therefore we return early
-    if (el.ownerDocument !== document) return el.ownerDocument
+    if (
+      (root instanceof Document || root instanceof ShadowRoot) &&
+      root.getSelection != null
+    ) {
+      return root
+    }
 
-    if (!(root instanceof Document || root instanceof ShadowRoot))
-      throw new Error(
-        `Unable to find DocumentOrShadowRoot for editor element: ${el}`
-      )
-
-    // COMPAT: Only Chrome implements the DocumentOrShadowRoot mixin for
-    // ShadowRoot; other browsers still implement it on the Document
-    // interface. (2020/08/08)
-    // https://developer.mozilla.org/en-US/docs/Web/API/ShadowRoot#Properties
-    if (root.getSelection === undefined && el.ownerDocument !== null)
-      return el.ownerDocument
-
-    return root
+    return el.ownerDocument
   },
 
   /**
@@ -250,9 +241,10 @@ export const ReactEditor = {
    */
 
   toDOMNode(editor: ReactEditor, node: Node): HTMLElement {
+    const KEY_TO_ELEMENT = EDITOR_TO_KEY_TO_ELEMENT.get(editor)
     const domNode = Editor.isEditor(node)
       ? EDITOR_TO_ELEMENT.get(editor)
-      : KEY_TO_ELEMENT.get(ReactEditor.findKey(editor, node))
+      : KEY_TO_ELEMENT?.get(ReactEditor.findKey(editor, node))
 
     if (!domNode) {
       throw new Error(

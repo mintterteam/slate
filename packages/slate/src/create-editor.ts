@@ -273,7 +273,7 @@ export const createEditor = (): Editor => {
                 voids: true,
               })
               n--
-            } else if (isLast && child.value == '') {
+            } else if (child.value == '') {
               Transforms.removeNodes(editor, {
                 at: path.concat(n),
                 voids: true,

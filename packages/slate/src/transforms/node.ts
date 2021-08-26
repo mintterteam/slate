@@ -422,9 +422,12 @@ export const NodeTransforms: NodeTransforms = {
       // of merging the two. This is a common rich text editor behavior to
       // prevent losing formatting when deleting entire nodes when you have a
       // hanging selection.
+      // if prevNode is first child in parent,don't remove it.
       if (
         (Element.isElement(prevNode) && Editor.isEmpty(editor, prevNode)) ||
-        (Text.isText(prevNode) && prevNode.value === '')
+        (Text.isText(prevNode) &&
+          prevNode.value === '' &&
+          prevPath[prevPath.length - 1] !== 0)
       ) {
         Transforms.removeNodes(editor, { at: prevPath, voids })
       } else {
@@ -629,19 +632,23 @@ export const NodeTransforms: NodeTransforms = {
           continue
         }
 
+        let hasChanges = false
+
         for (const k in props) {
           if (k === 'children' || k === 'text') {
             continue
           }
 
           if (props[k] !== node[k]) {
-            // Omit new properties from the old property list rather than set them to undefined
+            hasChanges = true
+            // Omit new properties from the old properties list
             if (node.hasOwnProperty(k)) properties[k] = node[k]
-            newProperties[k] = props[k]
+            // Omit properties that have been removed from the new properties list
+            if (props[k] != null) newProperties[k] = props[k]
           }
         }
 
-        if (Object.keys(newProperties).length !== 0) {
+        if (hasChanges) {
           editor.apply({
             type: 'set_node',
             path,
@@ -841,7 +848,13 @@ export const NodeTransforms: NodeTransforms = {
 
       const rangeRef = Range.isRange(at) ? Editor.rangeRef(editor, at) : null
       const matches = Editor.nodes(editor, { at, match, mode, voids })
-      const pathRefs = Array.from(matches, ([, p]) => Editor.pathRef(editor, p))
+      const pathRefs = Array.from(
+        matches,
+        ([, p]) => Editor.pathRef(editor, p)
+        // unwrapNode will call liftNode which does not support splitting the node when nested.
+        // If we do not reverse the order and call it from top to the bottom, it will remove all blocks
+        // that wrap target node. So we reverse the order.
+      ).reverse()
 
       for (const pathRef of pathRefs) {
         const path = pathRef.unref()!
@@ -942,6 +955,12 @@ export const NodeTransforms: NodeTransforms = {
           const last = matches[matches.length - 1]
           const [, firstPath] = first
           const [, lastPath] = last
+
+          if (firstPath.length === 0 && lastPath.length === 0) {
+            // if there's no matching parent - usually means the node is an editor - don't do anything
+            continue
+          }
+
           const commonPath = Path.equals(firstPath, lastPath)
             ? Path.parent(firstPath)
             : Path.common(firstPath, lastPath)

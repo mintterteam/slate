@@ -4,9 +4,6 @@ import String from './string'
 import { PLACEHOLDER_SYMBOL } from '../utils/weak-maps'
 import { RenderLeafProps, RenderPlaceholderProps } from './editable'
 
-// auto-incrementing key for String component, force it refresh to
-// prevent inconsistent rendering by React with IME input
-let keyForString = 0
 /**
  * Individual leaves in a text node with unique formatting.
  */
@@ -48,13 +45,7 @@ const Leaf = (props: {
   }, [placeholderRef, leaf])
 
   let children = (
-    <String
-      key={keyForString++}
-      isLast={isLast}
-      leaf={leaf}
-      parent={parent}
-      text={text}
-    />
+    <String isLast={isLast} leaf={leaf} parent={parent} text={text} />
   )
 
   if (leaf[PLACEHOLDER_SYMBOL]) {
@@ -103,8 +94,7 @@ const MemoizedLeaf = React.memo(Leaf, (prev, next) => {
     next.isLast === prev.isLast &&
     next.renderLeaf === prev.renderLeaf &&
     next.renderPlaceholder === prev.renderPlaceholder &&
-    next.text === prev.text &&
-    next.leaf.value === prev.leaf.value &&
+    next.value === prev.value &&
     Text.equals(next.leaf, prev.leaf) &&
     next.leaf[PLACEHOLDER_SYMBOL] === prev.leaf[PLACEHOLDER_SYMBOL]
   )

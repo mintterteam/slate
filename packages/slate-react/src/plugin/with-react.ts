@@ -3,8 +3,21 @@ import { Editor, Node, Path, Operation, Transforms, Range } from 'slate'
 
 import { ReactEditor } from './react-editor'
 import { Key } from '../utils/key'
-import { EDITOR_TO_ON_CHANGE, NODE_TO_KEY } from '../utils/weak-maps'
-import { isDOMText, getPlainText } from '../utils/dom'
+import {
+  EDITOR_TO_KEY_TO_ELEMENT,
+  EDITOR_TO_ON_CHANGE,
+  NODE_TO_KEY,
+} from '../utils/weak-maps'
+import {
+  AS_NATIVE,
+  NATIVE_OPERATIONS,
+  flushNativeEvents,
+} from '../utils/native'
+import {
+  isDOMText,
+  getPlainText,
+  getSlateFragmentAttribute,
+} from '../utils/dom'
 import { findCurrentLineRange } from '../utils/lines'
 
 /**
@@ -19,6 +32,10 @@ import { findCurrentLineRange } from '../utils/lines'
 export const withReact = <T extends Editor>(editor: T) => {
   const e = editor as T & ReactEditor
   const { apply, onChange, deleteBackward } = e
+
+  // The WeakMap which maps a key to a specific HTMLElement must be scoped to the editor instance to
+  // avoid collisions between editors in the DOM that share the same value.
+  EDITOR_TO_KEY_TO_ELEMENT.set(e, new WeakMap())
 
   e.deleteBackward = unit => {
     if (unit !== 'line') {
@@ -49,6 +66,31 @@ export const withReact = <T extends Editor>(editor: T) => {
   }
 
   e.apply = (op: Operation) => {
+    // if we're NOT an insert_text and there's a queue
+    // of native events, bail out and flush the queue.
+    // otherwise transforms as part of this cycle will
+    // be incorrect.
+    //
+    // This is needed as overriden operations (e.g. `insertText`)
+    // can call additional transforms, which will need accurate
+    // content, and will be called _before_ `onInput` is fired.
+    if (op.type !== 'insert_text') {
+      AS_NATIVE.set(editor, false)
+      flushNativeEvents(editor)
+    }
+
+    // If we're in native mode, queue the operation
+    // and it will be applied later.
+    if (AS_NATIVE.get(editor)) {
+      const nativeOps = NATIVE_OPERATIONS.get(editor)
+      if (nativeOps) {
+        nativeOps.push(op)
+      } else {
+        NATIVE_OPERATIONS.set(editor, [op])
+      }
+      return
+    }
+
     const matches: [Path, Key][] = []
 
     switch (op.type) {
@@ -96,7 +138,7 @@ export const withReact = <T extends Editor>(editor: T) => {
     }
   }
 
-  e.setFragmentData = (data: DataTransfer) => {
+  e.setFragmentData = (data: Pick<DataTransfer, 'getData' | 'setData'>) => {
     const { selection } = e
 
     if (!selection) {
@@ -179,10 +221,16 @@ export const withReact = <T extends Editor>(editor: T) => {
     data.setData('text/html', div.innerHTML)
     data.setData('text/plain', getPlainText(div))
     document.body.removeChild(div)
+    return data
   }
 
   e.insertData = (data: DataTransfer) => {
-    const fragment = data.getData('application/x-slate-fragment')
+    /**
+     * Checking copied fragment from application/x-slate-fragment or data-slate-fragment
+     */
+    const fragment =
+      data.getData('application/x-slate-fragment') ||
+      getSlateFragmentAttribute(data)
 
     if (fragment) {
       const decoded = decodeURIComponent(window.atob(fragment))

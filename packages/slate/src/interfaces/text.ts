@@ -1,7 +1,7 @@
-import { isPlainObject } from 'is-plain-object'
-import isEqual from 'fast-deep-equal'
+import isPlainObject from 'is-plain-object'
 import { Range } from '..'
 import { ExtendedType } from './custom-types'
+import { isDeepEqual } from '../utils/deep-equal'
 
 /**
  * `Text` objects represent the nodes that contain the actual text content of a
@@ -27,8 +27,10 @@ export interface TextInterface {
 export const Text: TextInterface = {
   /**
    * Check if two text nodes are equal.
+   *
+   * When loose is set, the text is not compared. This is
+   * used to check whether sibling text nodes can be merged.
    */
-
   equals(
     text: Text,
     another: Text,
@@ -36,7 +38,13 @@ export const Text: TextInterface = {
   ): boolean {
     const { loose = false } = options
 
-    return isEqual(
+    function omitValue(obj: Record<any, any>) {
+      const { value, ...rest } = obj
+
+      return rest
+    }
+
+    return isDeepEqual(
       loose ? omitValue(text) : text,
       loose ? omitValue(another) : another
     )
