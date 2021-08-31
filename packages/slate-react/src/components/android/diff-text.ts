@@ -134,7 +134,7 @@ export function getTextInsertion<T extends Editor>(
     return undefined
   }
 
-  const prevText = node.text
+  const prevText = node.value
   let nextText = domNode.textContent!
 
   // textContent will pad an extra \n when the textContent ends with an \n
@@ -203,8 +203,8 @@ export function normalizeTextInsertionRange(
     if (text) {
       const [node] = text
       const { anchor } = range
-      const characterBeforeAnchor = node.text[anchor.offset - 1]
-      const characterAfterAnchor = node.text[anchor.offset]
+      const characterBeforeAnchor = node.value[anchor.offset - 1]
+      const characterAfterAnchor = node.value[anchor.offset]
 
       if (insertText.length === 1 && insertText === characterAfterAnchor) {
         // Assume text should be inserted at the anchor

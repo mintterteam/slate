@@ -45,7 +45,7 @@ export interface BaseEditor {
   children: Descendant[]
   selection: Selection
   operations: Operation[]
-  marks: Omit<Text, 'text'> | null
+  marks: Omit<Text, 'value'> | null
 
   // Schema-specific node behaviors.
   isInline: (element: Element) => boolean
@@ -155,7 +155,7 @@ export interface EditorInterface {
       voids?: boolean
     }
   ) => Generator<NodeEntry<T>, void, undefined>
-  marks: (editor: Editor) => Omit<Text, 'text'> | null
+  marks: (editor: Editor) => Omit<Text, 'value'> | null
   next: <T extends Descendant>(
     editor: Editor,
     options?: {
@@ -625,7 +625,7 @@ export const Editor: EditorInterface = {
       children.length === 0 ||
       (children.length === 1 &&
         Text.isText(first) &&
-        first.text === '' &&
+        first.value === '' &&
         !editor.isVoid(element))
     )
   },
@@ -745,7 +745,7 @@ export const Editor: EditorInterface = {
    * Get the marks that would be added to text at the current selection.
    */
 
-  marks(editor: Editor): Omit<Text, 'text'> | null {
+  marks(editor: Editor): Omit<Text, 'value'> | null {
     const { marks, selection } = editor
 
     if (!selection) {
@@ -761,7 +761,7 @@ export const Editor: EditorInterface = {
 
       if (match) {
         const [node] = match as NodeEntry<Text>
-        const { text, ...rest } = node
+        const { value, ...rest } = node
         return rest
       } else {
         return {}
@@ -788,7 +788,7 @@ export const Editor: EditorInterface = {
       }
     }
 
-    const { text, ...rest } = node
+    const { value, ...rest } = node
     return rest
   },
 
@@ -1011,7 +1011,15 @@ export const Editor: EditorInterface = {
             by definition adding children to an empty node can't cause other paths to change.
           */
           if (Element.isElement(node) && node.children.length === 0) {
+// <<<<<<< HEAD
             editor.normalizeNode(entry)
+// =======
+            // const child = { value: '' }
+            // Transforms.insertNodes(editor, child, {
+            //   at: dirtyPath.concat(0),
+            //   voids: true,
+            // })
+// >>>>>>> feat: unist compatibility
           }
         }
       }
@@ -1182,7 +1190,7 @@ export const Editor: EditorInterface = {
         )
       }
 
-      return { path, offset: edge === 'end' ? node.text.length : 0 }
+      return { path, offset: edge === 'end' ? node.value.length : 0 }
     }
 
     if (Range.isRange(at)) {
@@ -1363,10 +1371,10 @@ export const Editor: EditorInterface = {
         if (isFirst) {
           leafTextRemaining = reverse
             ? first.offset
-            : node.text.length - first.offset
+            : node.value.length - first.offset
           leafTextOffset = first.offset // Works for reverse too.
         } else {
-          leafTextRemaining = node.text.length
+          leafTextRemaining = node.value.length
           leafTextOffset = reverse ? leafTextRemaining : 0
         }
 
@@ -1602,7 +1610,7 @@ export const Editor: EditorInterface = {
       match: Text.isText,
       voids,
     })) {
-      let t = node.text
+      let t = node.value
 
       if (Path.equals(path, end.path)) {
         t = t.slice(0, end.offset)
@@ -1657,8 +1665,8 @@ export const Editor: EditorInterface = {
         continue
       }
 
-      if (node.text !== '' || Path.isBefore(path, blockPath)) {
-        end = { path, offset: node.text.length }
+      if (node.value !== '' || Path.isBefore(path, blockPath)) {
+        end = { path, offset: node.value.length }
         break
       }
     }
