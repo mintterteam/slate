@@ -35,7 +35,7 @@ const resolveDescendants = (children: any[]): Descendant[] => {
     const prev = nodes[nodes.length - 1]
 
     if (typeof child === 'string') {
-      const text = { text: child }
+      const text = { value: child }
       STRINGS.add(text)
       child = text
     }
@@ -49,7 +49,7 @@ const resolveDescendants = (children: any[]): Descendant[] => {
         STRINGS.has(c) &&
         Text.equals(prev, c, { loose: true })
       ) {
-        prev.text += c.text
+        prev.value += c.value
       } else {
         nodes.push(c)
       }
@@ -197,7 +197,7 @@ export function createText(
   let [node] = nodes
 
   if (node == null) {
-    node = { text: '' }
+    node = { value: '' }
   }
 
   if (!Text.isText(node)) {
