@@ -10,7 +10,7 @@ import { ExtendedType } from './custom-types'
  */
 
 export interface BaseText {
-  text: string
+  value: string
 }
 
 export type Text = ExtendedType<'Text', BaseText>
@@ -36,15 +36,9 @@ export const Text: TextInterface = {
   ): boolean {
     const { loose = false } = options
 
-    function omitText(obj: Record<any, any>) {
-      const { text, ...rest } = obj
-
-      return rest
-    }
-
     return isEqual(
-      loose ? omitText(text) : text,
-      loose ? omitText(another) : another
+      loose ? omitValue(text) : text,
+      loose ? omitValue(another) : another
     )
   },
 
@@ -69,7 +63,7 @@ export const Text: TextInterface = {
    */
 
   isTextProps(props: any): props is Partial<Text> {
-    return (props as Partial<Text>).text !== undefined
+    return (props as Partial<Text>).value !== undefined
   },
 
   /**
@@ -107,7 +101,7 @@ export const Text: TextInterface = {
       let o = 0
 
       for (const leaf of leaves) {
-        const { length } = leaf.text
+        const { length } = leaf.value
         const offset = o
         o += length
 
@@ -139,14 +133,14 @@ export const Text: TextInterface = {
 
         if (end.offset < o) {
           const off = end.offset - offset
-          after = { ...middle, text: middle.text.slice(off) }
-          middle = { ...middle, text: middle.text.slice(0, off) }
+          after = { ...middle, value: middle.value.slice(off) }
+          middle = { ...middle, value: middle.value.slice(0, off) }
         }
 
         if (start.offset > offset) {
           const off = start.offset - offset
-          before = { ...middle, text: middle.text.slice(0, off) }
-          middle = { ...middle, text: middle.text.slice(off) }
+          before = { ...middle, value: middle.value.slice(0, off) }
+          middle = { ...middle, value: middle.value.slice(off) }
         }
 
         Object.assign(middle, rest)
@@ -167,4 +161,10 @@ export const Text: TextInterface = {
 
     return leaves
   },
+}
+
+function omitValue(obj: Record<any, any>) {
+  const { text, ...rest } = obj
+
+  return rest
 }
