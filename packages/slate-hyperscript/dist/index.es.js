@@ -1,4 +1,4 @@
-import isPlainObject from 'is-plain-object';
+import { isPlainObject } from 'is-plain-object';
 import { Text, Range, createEditor as createEditor$1, Node, Element } from 'slate';
 
 function _defineProperty(obj, key, value) {
@@ -95,9 +95,9 @@ var getFocusOffset = text => {
   return FOCUS.get(text);
 };
 
-function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); keys.push.apply(keys, symbols); } return keys; }
+function ownKeys$1(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) { symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); } keys.push.apply(keys, symbols); } return keys; }
 
-function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
+function _objectSpread$1(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$1(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$1(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
 /**
  * Resolve the descedants of a node by normalizing the children that can be
  * passed into a hyperscript creator function.
@@ -179,7 +179,7 @@ function createCursor(tagName, attributes, children) {
  */
 
 function createElement(tagName, attributes, children) {
-  return _objectSpread(_objectSpread({}, attributes), {}, {
+  return _objectSpread$1(_objectSpread$1({}, attributes), {}, {
     children: resolveDescendants(children)
   });
 }
@@ -213,7 +213,7 @@ function createSelection(tagName, attributes, children) {
     throw new Error("The <selection> hyperscript tag must have a <focus> tag as a child with `path` and `offset` attributes defined.");
   }
 
-  return _objectSpread({
+  return _objectSpread$1({
     anchor: {
       offset: anchor.offset,
       path: anchor.path
@@ -314,9 +314,9 @@ function createEditor(tagName, attributes, children) {
   return editor;
 }
 
-function ownKeys$1(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); keys.push.apply(keys, symbols); } return keys; }
+function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) { symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); } keys.push.apply(keys, symbols); } return keys; }
 
-function _objectSpread$1(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$1(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$1(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
+function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
 /**
  * The default creators for Slate objects.
  */
@@ -342,7 +342,7 @@ var createHyperscript = function createHyperscript() {
   } = options;
   var elementCreators = normalizeElements(elements);
 
-  var creators = _objectSpread$1(_objectSpread$1(_objectSpread$1({}, DEFAULT_CREATORS), elementCreators), options.creators);
+  var creators = _objectSpread(_objectSpread(_objectSpread({}, DEFAULT_CREATORS), elementCreators), options.creators);
 
   var jsx = createFactory(creators);
   return jsx;
@@ -396,7 +396,7 @@ var normalizeElements = elements => {
     }
 
     creators[tagName] = (tagName, attributes, children) => {
-      return createElement('element', _objectSpread$1(_objectSpread$1({}, props), attributes), children);
+      return createElement('element', _objectSpread(_objectSpread({}, props), attributes), children);
     };
   };
 

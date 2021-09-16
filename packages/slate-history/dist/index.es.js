@@ -1,4 +1,4 @@
-import isPlainObject from 'is-plain-object';
+import { isPlainObject } from 'is-plain-object';
 import { Operation, Editor, Path } from 'slate';
 
 var History = {

@@ -1,7 +1,5 @@
-import isPlainObject from 'is-plain-object';
-import { reverse } from 'esrever';
+import { isPlainObject } from 'is-plain-object';
 import { produce, createDraft, finishDraft, isDraft } from 'immer';
-import isEqual from 'fast-deep-equal';
 
 function _defineProperty(obj, key, value) {
   if (key in obj) {
@@ -25,9 +23,9 @@ var PATH_REFS = new WeakMap();
 var POINT_REFS = new WeakMap();
 var RANGE_REFS = new WeakMap();
 
-function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); keys.push.apply(keys, symbols); } return keys; }
+function ownKeys$9(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) { symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); } keys.push.apply(keys, symbols); } return keys; }
 
-function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
+function _objectSpread$9(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$9(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$9(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
 /**
  * Create a new Slate `Editor` object.
  */
@@ -112,7 +110,7 @@ var createEditor = () => {
             split: true
           });
         } else {
-          var marks = _objectSpread(_objectSpread({}, Editor.marks(editor) || {}), {}, {
+          var marks = _objectSpread$9(_objectSpread$9({}, Editor.marks(editor) || {}), {}, {
             [key]: value
           });
 
@@ -209,7 +207,7 @@ var createEditor = () => {
         }
 
         if (marks) {
-          var node = _objectSpread({
+          var node = _objectSpread$9({
             value
           }, marks);
 
@@ -301,7 +299,7 @@ var createEditor = () => {
                 voids: true
               });
               n--;
-            } else if (isLast && _child.value === '') {
+            } else if (_child.value == '') {
               Transforms.removeNodes(editor, {
                 at: path.concat(n),
                 voids: true
@@ -324,7 +322,7 @@ var createEditor = () => {
             split: true
           });
         } else {
-          var marks = _objectSpread({}, Editor.marks(editor) || {});
+          var marks = _objectSpread$9({}, Editor.marks(editor) || {});
 
           delete marks[key];
           editor.marks = marks;
@@ -361,7 +359,7 @@ var getDirtyPaths = op => {
           path: _path2
         } = op;
         var levels = Path.levels(_path2);
-        var descendants = Text.isText(node) ? [] : Array.from(Node.nodes(node), (_ref3) => {
+        var descendants = Text.isText(node) ? [] : Array.from(Node.nodes(node), _ref3 => {
           var [, p] = _ref3;
           return _path2.concat(p);
         });
@@ -479,75 +477,131 @@ function _objectWithoutProperties(source, excluded) {
 var SPACE = /\s/;
 var PUNCTUATION = /[\u0021-\u0023\u0025-\u002A\u002C-\u002F\u003A\u003B\u003F\u0040\u005B-\u005D\u005F\u007B\u007D\u00A1\u00A7\u00AB\u00B6\u00B7\u00BB\u00BF\u037E\u0387\u055A-\u055F\u0589\u058A\u05BE\u05C0\u05C3\u05C6\u05F3\u05F4\u0609\u060A\u060C\u060D\u061B\u061E\u061F\u066A-\u066D\u06D4\u0700-\u070D\u07F7-\u07F9\u0830-\u083E\u085E\u0964\u0965\u0970\u0AF0\u0DF4\u0E4F\u0E5A\u0E5B\u0F04-\u0F12\u0F14\u0F3A-\u0F3D\u0F85\u0FD0-\u0FD4\u0FD9\u0FDA\u104A-\u104F\u10FB\u1360-\u1368\u1400\u166D\u166E\u169B\u169C\u16EB-\u16ED\u1735\u1736\u17D4-\u17D6\u17D8-\u17DA\u1800-\u180A\u1944\u1945\u1A1E\u1A1F\u1AA0-\u1AA6\u1AA8-\u1AAD\u1B5A-\u1B60\u1BFC-\u1BFF\u1C3B-\u1C3F\u1C7E\u1C7F\u1CC0-\u1CC7\u1CD3\u2010-\u2027\u2030-\u2043\u2045-\u2051\u2053-\u205E\u207D\u207E\u208D\u208E\u2329\u232A\u2768-\u2775\u27C5\u27C6\u27E6-\u27EF\u2983-\u2998\u29D8-\u29DB\u29FC\u29FD\u2CF9-\u2CFC\u2CFE\u2CFF\u2D70\u2E00-\u2E2E\u2E30-\u2E3B\u3001-\u3003\u3008-\u3011\u3014-\u301F\u3030\u303D\u30A0\u30FB\uA4FE\uA4FF\uA60D-\uA60F\uA673\uA67E\uA6F2-\uA6F7\uA874-\uA877\uA8CE\uA8CF\uA8F8-\uA8FA\uA92E\uA92F\uA95F\uA9C1-\uA9CD\uA9DE\uA9DF\uAA5C-\uAA5F\uAADE\uAADF\uAAF0\uAAF1\uABEB\uFD3E\uFD3F\uFE10-\uFE19\uFE30-\uFE52\uFE54-\uFE61\uFE63\uFE68\uFE6A\uFE6B\uFF01-\uFF03\uFF05-\uFF0A\uFF0C-\uFF0F\uFF1A\uFF1B\uFF1F\uFF20\uFF3B-\uFF3D\uFF3F\uFF5B\uFF5D\uFF5F-\uFF65]/;
 var CHAMELEON = /['\u2018\u2019]/;
-var SURROGATE_START = 0xd800;
-var SURROGATE_END = 0xdfff;
-var ZERO_WIDTH_JOINER = 0x200d;
 /**
  * Get the distance to the end of the first character in a string of text.
  */
 
-var getCharacterDistance = text => {
-  var offset = 0; // prev types:
-  // SURR: surrogate pair
-  // MOD: modifier (technically also surrogate pair)
+var getCharacterDistance = function getCharacterDistance(str) {
+  var isRTL = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
+  var isLTR = !isRTL;
+  var dist = 0; // prev types:
+  // NSEQ: non sequenceable codepoint.
+  // MOD: modifier
   // ZWJ: zero width joiner
   // VAR: variation selector
-  // BMP: sequenceable character from basic multilingual plane
+  // BMP: sequenceable codepoint from basic multilingual plane
+  // RI: regional indicator
+  // KC: keycap
+  // TAG: tag
 
   var prev = null;
-  var charCode = text.charCodeAt(0);
+  var codepoints = isLTR ? str : codepointsIteratorRTL(str);
 
-  while (charCode) {
-    if (isSurrogate(charCode)) {
-      var modifier = isModifier(charCode, text, offset); // Early returns are the heart of this function, where we decide if previous and current
-      // codepoints should form a single character (in terms of how many of them should selection
-      // jump over).
+  for (var codepoint of codepoints) {
+    var code = codepoint.codePointAt(0);
+    if (!code) break; // Check if codepoint is part of a sequence.
 
-      if (prev === 'SURR' || prev === 'BMP') {
-        break;
-      }
-
-      offset += 2;
-      prev = modifier ? 'MOD' : 'SURR';
-      charCode = text.charCodeAt(offset); // Absolutely fine to `continue` without any checks because if `charCode` is NaN (which
-      // is the case when out of `text` range), next `while` loop won"t execute and we"re done.
-
-      continue;
-    }
-
-    if (charCode === ZERO_WIDTH_JOINER) {
-      offset += 1;
+    if (isZWJ(code)) {
+      dist += codepoint.length;
       prev = 'ZWJ';
-      charCode = text.charCodeAt(offset);
       continue;
     }
 
-    if (isBMPEmoji(charCode)) {
-      if (prev && prev !== 'ZWJ' && prev !== 'VAR') {
+    var [isKeycapStart, isKeycapEnd] = isLTR ? [isKeycap, isCombiningEnclosingKeycap] : [isCombiningEnclosingKeycap, isKeycap];
+
+    if (isKeycapStart(code)) {
+      if (prev === 'KC') {
         break;
       }
 
-      offset += 1;
-      prev = 'BMP';
-      charCode = text.charCodeAt(offset);
+      dist += codepoint.length;
+      prev = 'KC';
       continue;
     }
 
-    if (isVariationSelector(charCode)) {
-      if (prev && prev !== 'ZWJ') {
+    if (isKeycapEnd(code)) {
+      dist += codepoint.length;
+      break;
+    }
+
+    if (isVariationSelector(code)) {
+      dist += codepoint.length;
+
+      if (isLTR && prev === 'BMP') {
         break;
       }
 
-      offset += 1;
       prev = 'VAR';
-      charCode = text.charCodeAt(offset);
+      continue;
+    }
+
+    if (isBMPEmoji(code)) {
+      if (isLTR && prev && prev !== 'ZWJ' && prev !== 'VAR') {
+        break;
+      }
+
+      dist += codepoint.length;
+
+      if (isRTL && prev === 'VAR') {
+        break;
+      }
+
+      prev = 'BMP';
+      continue;
+    }
+
+    if (isModifier(code)) {
+      dist += codepoint.length;
+      prev = 'MOD';
+      continue;
+    }
+
+    var [isTagStart, isTagEnd] = isLTR ? [isBlackFlag, isCancelTag] : [isCancelTag, isBlackFlag];
+
+    if (isTagStart(code)) {
+      if (prev === 'TAG') break;
+      dist += codepoint.length;
+      prev = 'TAG';
+      continue;
+    }
+
+    if (isTagEnd(code)) {
+      dist += codepoint.length;
+      break;
+    }
+
+    if (prev === 'TAG' && isTag(code)) {
+      dist += codepoint.length;
+      continue;
+    }
+
+    if (isRegionalIndicator(code)) {
+      dist += codepoint.length;
+
+      if (prev === 'RI') {
+        break;
+      }
+
+      prev = 'RI';
+      continue;
+    }
+
+    if (!isBMP(code)) {
+      // If previous code point is not sequenceable, it means we are not in a
+      // sequence.
+      if (prev === 'NSEQ') {
+        break;
+      }
+
+      dist += codepoint.length;
+      prev = 'NSEQ';
       continue;
     } // Modifier 'groups up' with what ever character is before that (even whitespace), need to
     // look ahead.
 
 
-    if (prev === 'MOD') {
-      offset += 1;
+    if (isLTR && prev === 'MOD') {
+      dist += codepoint.length;
       break;
     } // If while loop ever gets here, we're done (e.g latin chars).
 
@@ -555,43 +609,56 @@ var getCharacterDistance = text => {
     break;
   }
 
-  return offset || 1;
+  return dist || 1;
 };
 /**
  * Get the distance to the end of the first word in a string of text.
  */
 
-var getWordDistance = text => {
-  var length = 0;
-  var i = 0;
+var getWordDistance = function getWordDistance(text) {
+  var isRTL = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
+  var dist = 0;
   var started = false;
-  var char;
 
-  while (char = text.charAt(i)) {
-    var l = getCharacterDistance(char);
-    char = text.slice(i, i + l);
-    var rest = text.slice(i + l);
+  while (text.length > 0) {
+    var charDist = getCharacterDistance(text, isRTL);
+    var [char, remaining] = splitByCharacterDistance(text, charDist, isRTL);
 
-    if (isWordCharacter(char, rest)) {
+    if (isWordCharacter(char, remaining, isRTL)) {
       started = true;
-      length += l;
+      dist += charDist;
     } else if (!started) {
-      length += l;
+      dist += charDist;
     } else {
       break;
     }
 
-    i += l;
+    text = remaining;
   }
 
-  return length;
+  return dist;
+};
+/**
+ * Split a string in two parts at a given distance starting from the end when
+ * `isRTL` is set to `true`.
+ */
+
+var splitByCharacterDistance = (str, dist, isRTL) => {
+  if (isRTL) {
+    var at = str.length - dist;
+    return [str.slice(at, str.length), str.slice(0, at)];
+  }
+
+  return [str.slice(0, dist), str.slice(dist)];
 };
 /**
  * Check if a character is a word character. The `remaining` argument is used
  * because sometimes you must read subsequent characters to truly determine it.
  */
 
-var isWordCharacter = (char, remaining) => {
+var isWordCharacter = function isWordCharacter(char, remaining) {
+  var isRTL = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
+
   if (SPACE.test(char)) {
     return false;
   } // Chameleons count as word characters as long as they're in a word, so
@@ -599,12 +666,10 @@ var isWordCharacter = (char, remaining) => {
 
 
   if (CHAMELEON.test(char)) {
-    var next = remaining.charAt(0);
-    var length = getCharacterDistance(next);
-    next = remaining.slice(0, length);
-    var rest = remaining.slice(length);
+    var charDist = getCharacterDistance(remaining, isRTL);
+    var [nextChar, nextRemaining] = splitByCharacterDistance(remaining, charDist, isRTL);
 
-    if (isWordCharacter(next, rest)) {
+    if (isWordCharacter(nextChar, nextRemaining, isRTL)) {
       return true;
     }
   }
@@ -616,25 +681,14 @@ var isWordCharacter = (char, remaining) => {
   return true;
 };
 /**
- * Determines if `code` is a surrogate
- */
-
-
-var isSurrogate = code => SURROGATE_START <= code && code <= SURROGATE_END;
-/**
  * Does `code` form Modifier with next one.
  *
  * https://emojipedia.org/modifiers/
  */
 
 
-var isModifier = (code, text, offset) => {
-  if (code === 0xd83c) {
-    var next = text.charCodeAt(offset + 1);
-    return next <= 0xdfff && next >= 0xdffb;
-  }
-
-  return false;
+var isModifier = code => {
+  return code >= 0x1f3fb && code <= 0x1f3ff;
 };
 /**
  * Is `code` a Variation Selector.
@@ -645,6 +699,28 @@ var isModifier = (code, text, offset) => {
 
 var isVariationSelector = code => {
   return code <= 0xfe0f && code >= 0xfe00;
+};
+/**
+ * Is `code` a code point used in keycap sequence.
+ *
+ * https://emojipedia.org/emoji-keycap-sequence/
+ */
+
+
+var isKeycap = code => {
+  return code >= 0x30 && code <= 0x39 || // digits
+  code === 0x23 || // number sign
+  code === 0x2a;
+};
+/**
+ * Is `code` a Combining Enclosing Keycap.
+ *
+ * https://emojipedia.org/combining-enclosing-keycap/
+ */
+
+
+var isCombiningEnclosingKeycap = code => {
+  return code === 0x20e3;
 };
 /**
  * Is `code` one of the BMP codes used in emoji sequences.
@@ -664,8 +740,125 @@ var isBMPEmoji = code => {
   code === 0x2620 || // scull (☠)
   code === 0x2695 || // medical (⚕)
   code === 0x2708 || // plane (✈️)
-  code === 0x25ef // large circle (◯)
+  code === 0x25ef || // large circle (◯)
+  code === 0x2b06 || // up arrow (⬆)
+  code === 0x2197 || // up-right arrow (↗)
+  code === 0x27a1 || // right arrow (➡)
+  code === 0x2198 || // down-right arrow (↘)
+  code === 0x2b07 || // down arrow (⬇)
+  code === 0x2199 || // down-left arrow (↙)
+  code === 0x2b05 || // left arrow (⬅)
+  code === 0x2196 || // up-left arrow (↖)
+  code === 0x2195 || // up-down arrow (↕)
+  code === 0x2194 || // left-right arrow (↔)
+  code === 0x21a9 || // right arrow curving left (↩)
+  code === 0x21aa || // left arrow curving right (↪)
+  code === 0x2934 || // right arrow curving up (⤴)
+  code === 0x2935 // right arrow curving down (⤵)
   ;
+};
+/**
+ * Is `code` a Regional Indicator.
+ *
+ * https://en.wikipedia.org/wiki/Regional_indicator_symbol
+ */
+
+
+var isRegionalIndicator = code => {
+  return code >= 0x1f1e6 && code <= 0x1f1ff;
+};
+/**
+ * Is `code` from basic multilingual plane.
+ *
+ * https://codepoints.net/basic_multilingual_plane
+ */
+
+
+var isBMP = code => {
+  return code <= 0xffff;
+};
+/**
+ * Is `code` a Zero Width Joiner.
+ *
+ * https://emojipedia.org/zero-width-joiner/
+ */
+
+
+var isZWJ = code => {
+  return code === 0x200d;
+};
+/**
+ * Is `code` a Black Flag.
+ *
+ * https://emojipedia.org/black-flag/
+ */
+
+
+var isBlackFlag = code => {
+  return code === 0x1f3f4;
+};
+/**
+ * Is `code` a Tag.
+ *
+ * https://emojipedia.org/emoji-tag-sequence/
+ */
+
+
+var isTag = code => {
+  return code >= 0xe0000 && code <= 0xe007f;
+};
+/**
+ * Is `code` a Cancel Tag.
+ *
+ * https://emojipedia.org/cancel-tag/
+ */
+
+
+var isCancelTag = code => {
+  return code === 0xe007f;
+};
+/**
+ * Iterate on codepoints from right to left.
+ */
+
+
+var codepointsIteratorRTL = function* codepointsIteratorRTL(str) {
+  var end = str.length - 1;
+
+  for (var i = 0; i < str.length; i++) {
+    var char1 = str.charAt(end - i);
+
+    if (isLowSurrogate(char1.charCodeAt(0))) {
+      var char2 = str.charAt(end - i - 1);
+
+      if (isHighSurrogate(char2.charCodeAt(0))) {
+        yield char2 + char1;
+        i++;
+        continue;
+      }
+    }
+
+    yield char1;
+  }
+};
+/**
+ * Is `charCode` a high surrogate.
+ *
+ * https://en.wikipedia.org/wiki/Universal_Character_Set_characters#Surrogates
+ */
+
+var isHighSurrogate = charCode => {
+  return charCode >= 0xd800 && charCode <= 0xdbff;
+};
+/**
+ * Is `charCode` a low surrogate.
+ *
+ * https://en.wikipedia.org/wiki/Universal_Character_Set_characters#Surrogates
+ */
+
+
+var isLowSurrogate = charCode => {
+  return charCode >= 0xdc00 && charCode <= 0xdfff;
 };
 
 /**
@@ -734,9 +927,12 @@ var Element = {
 
 };
 
-function ownKeys$1(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); keys.push.apply(keys, symbols); } return keys; }
+var _excluded$4 = ["value"],
+    _excluded2$3 = ["value"];
 
-function _objectSpread$1(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$1(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$1(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
+function ownKeys$8(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) { symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); } keys.push.apply(keys, symbols); } return keys; }
+
+function _objectSpread$8(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$8(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$8(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
 var IS_EDITOR_CACHE = new WeakMap();
 var Editor = {
   /**
@@ -799,7 +995,7 @@ var Editor = {
     var d = 0;
     var target;
 
-    for (var p of Editor.positions(editor, _objectSpread$1(_objectSpread$1({}, options), {}, {
+    for (var p of Editor.positions(editor, _objectSpread$8(_objectSpread$8({}, options), {}, {
       at: range
     }))) {
       if (d > distance) {
@@ -835,7 +1031,7 @@ var Editor = {
     var d = 0;
     var target;
 
-    for (var p of Editor.positions(editor, _objectSpread$1(_objectSpread$1({}, options), {}, {
+    for (var p of Editor.positions(editor, _objectSpread$8(_objectSpread$8({}, options), {}, {
       at: range,
       reverse: true
     }))) {
@@ -1151,7 +1347,7 @@ var Editor = {
       if (match) {
         var [_node] = match;
 
-        var _rest = _objectWithoutProperties(_node, ["value"]);
+        var _rest = _objectWithoutProperties(_node, _excluded$4);
 
         return _rest;
       } else {
@@ -1186,7 +1382,7 @@ var Editor = {
       }
     }
 
-    var rest = _objectWithoutProperties(node, ["value"]);
+    var rest = _objectWithoutProperties(node, _excluded2$3);
 
     return rest;
   },
@@ -1294,7 +1490,7 @@ var Editor = {
       reverse,
       from,
       to,
-      pass: (_ref) => {
+      pass: _ref => {
         var [n] = _ref;
         return voids ? false : Editor.isVoid(editor, n);
       }
@@ -1374,7 +1570,7 @@ var Editor = {
     }
 
     if (force) {
-      var allPaths = Array.from(Node.nodes(editor), (_ref2) => {
+      var allPaths = Array.from(Node.nodes(editor), _ref2 => {
         var [, p] = _ref2;
         return p;
       });
@@ -1393,17 +1589,24 @@ var Editor = {
       */
       for (var dirtyPath of getDirtyPaths(editor)) {
         if (Node.has(editor, dirtyPath)) {
-          var [node, _] = Editor.node(editor, dirtyPath); // Add a text child to elements with no children.
-          // This is safe to do in any order, by definition it can't cause other paths to change.
+          var entry = Editor.node(editor, dirtyPath);
+          var [node, _] = entry;
+          /*
+            The default normalizer inserts an empty text node in this scenario, but it can be customised.
+            So there is some risk here.
+                       As long as the normalizer only inserts child nodes for this case it is safe to do in any order;
+            by definition adding children to an empty node can't cause other paths to change.
+          */
 
           if (Element.isElement(node) && node.children.length === 0) {
-            var child = {
-              value: ''
-            };
-            Transforms.insertNodes(editor, child, {
-              at: dirtyPath.concat(0),
-              voids: true
-            });
+            // <<<<<<< HEAD
+            editor.normalizeNode(entry); // =======
+            // const child = { value: '' }
+            // Transforms.insertNodes(editor, child, {
+            //   at: dirtyPath.concat(0),
+            //   voids: true,
+            // })
+            // >>>>>>> feat: unist compatibility
           }
         }
       }
@@ -1421,8 +1624,9 @@ var Editor = {
 
 
         if (Node.has(editor, _dirtyPath)) {
-          var entry = Editor.node(editor, _dirtyPath);
-          editor.normalizeNode(entry);
+          var _entry = Editor.node(editor, _dirtyPath);
+
+          editor.normalizeNode(_entry);
         }
 
         m++;
@@ -1629,7 +1833,7 @@ var Editor = {
     var {
       at = editor.selection,
       unit = 'offset',
-      reverse: reverse$1 = false,
+      reverse = false,
       voids = false
     } = options;
 
@@ -1657,7 +1861,7 @@ var Editor = {
 
     var range = Editor.range(editor, at);
     var [start, end] = Range.edges(range);
-    var first = reverse$1 ? end : start;
+    var first = reverse ? end : start;
     var isNewBlock = false;
     var blockText = '';
     var distance = 0; // Distance for leafText to catch up to blockText.
@@ -1672,7 +1876,7 @@ var Editor = {
 
     for (var [node, path] of Editor.nodes(editor, {
       at,
-      reverse: reverse$1,
+      reverse,
       voids
     })) {
       /*
@@ -1711,7 +1915,6 @@ var Editor = {
           }, {
             voids
           });
-          blockText = reverse$1 ? reverse(blockText) : blockText;
           isNewBlock = true;
         }
       }
@@ -1729,11 +1932,11 @@ var Editor = {
         // Reset `leafText` counters for new text node.
 
         if (isFirst) {
-          leafTextRemaining = reverse$1 ? first.offset : node.value.length - first.offset;
+          leafTextRemaining = reverse ? first.offset : node.value.length - first.offset;
           leafTextOffset = first.offset; // Works for reverse too.
         } else {
           leafTextRemaining = node.value.length;
-          leafTextOffset = reverse$1 ? leafTextRemaining : 0;
+          leafTextOffset = reverse ? leafTextRemaining : 0;
         } // Yield position at the start of node (potentially).
 
 
@@ -1752,12 +1955,14 @@ var Editor = {
           // otherwise advance blockText forward by the new `distance`.
           if (distance === 0) {
             if (blockText === '') break;
-            distance = calcDistance(blockText, unit);
-            blockText = blockText.slice(distance);
+            distance = calcDistance(blockText, unit, reverse); // Split the string at the previously found distance and use the
+            // remaining string for the next iteration.
+
+            blockText = splitByCharacterDistance(blockText, distance, reverse)[1];
           } // Advance `leafText` by the current `distance`.
 
 
-          leafTextOffset = reverse$1 ? leafTextOffset - distance : leafTextOffset + distance;
+          leafTextOffset = reverse ? leafTextOffset - distance : leafTextOffset + distance;
           leafTextRemaining = leafTextRemaining - distance; // If `leafText` is exhausted, break to get a new leaf node
           // and set distance to the overflow amount, so we'll (maybe)
           // catch up to blockText in the next leaf text node.
@@ -1784,11 +1989,11 @@ var Editor = {
     // Return the distance in offsets for a step of size `unit` on given string.
 
 
-    function calcDistance(text, unit) {
+    function calcDistance(text, unit, reverse) {
       if (unit === 'character') {
-        return getCharacterDistance(text);
+        return getCharacterDistance(text, reverse);
       } else if (unit === 'word') {
-        return getWordDistance(text);
+        return getWordDistance(text, reverse);
       } else if (unit === 'line' || unit === 'block') {
         return text.length;
       }
@@ -2034,7 +2239,7 @@ var Editor = {
    */
   void(editor) {
     var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
-    return Editor.above(editor, _objectSpread$1(_objectSpread$1({}, options), {}, {
+    return Editor.above(editor, _objectSpread$8(_objectSpread$8({}, options), {}, {
       match: n => Editor.isVoid(editor, n)
     }));
   },
@@ -2076,6 +2281,8 @@ var Span = {
 
 };
 
+var _excluded$3 = ["children"],
+    _excluded2$2 = ["value"];
 var IS_NODE_LIST_CACHE = new WeakMap();
 var Node = {
   /**
@@ -2203,11 +2410,11 @@ var Node = {
    */
   extractProps(node) {
     if (Element.isAncestor(node)) {
-      var properties = _objectWithoutProperties(node, ["children"]);
+      var properties = _objectWithoutProperties(node, _excluded$3);
 
       return properties;
     } else {
-      var properties = _objectWithoutProperties(node, ["value"]);
+      var properties = _objectWithoutProperties(node, _excluded2$2);
 
       return properties;
     }
@@ -2246,7 +2453,7 @@ var Node = {
       var [start, end] = Range.edges(range);
       var nodeEntries = Node.nodes(r, {
         reverse: true,
-        pass: (_ref) => {
+        pass: _ref => {
           var [, path] = _ref;
           return !Range.includes(range, path);
         }
@@ -2516,9 +2723,9 @@ var Node = {
 
 };
 
-function ownKeys$2(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); keys.push.apply(keys, symbols); } return keys; }
+function ownKeys$7(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) { symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); } keys.push.apply(keys, symbols); } return keys; }
 
-function _objectSpread$2(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$2(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$2(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
+function _objectSpread$7(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$7(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$7(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
 var Operation = {
   /**
    * Check of a value is a `NodeOperation` object.
@@ -2597,21 +2804,21 @@ var Operation = {
     switch (op.type) {
       case 'insert_node':
         {
-          return _objectSpread$2(_objectSpread$2({}, op), {}, {
+          return _objectSpread$7(_objectSpread$7({}, op), {}, {
             type: 'remove_node'
           });
         }
 
       case 'insert_text':
         {
-          return _objectSpread$2(_objectSpread$2({}, op), {}, {
+          return _objectSpread$7(_objectSpread$7({}, op), {}, {
             type: 'remove_text'
           });
         }
 
       case 'merge_node':
         {
-          return _objectSpread$2(_objectSpread$2({}, op), {}, {
+          return _objectSpread$7(_objectSpread$7({}, op), {}, {
             type: 'split_node',
             path: Path.previous(op.path)
           });
@@ -2631,7 +2838,7 @@ var Operation = {
 
 
           if (Path.isSibling(path, newPath)) {
-            return _objectSpread$2(_objectSpread$2({}, op), {}, {
+            return _objectSpread$7(_objectSpread$7({}, op), {}, {
               path: newPath,
               newPath: path
             });
@@ -2645,7 +2852,7 @@ var Operation = {
 
           var inversePath = Path.transform(path, op);
           var inverseNewPath = Path.transform(Path.next(path), op);
-          return _objectSpread$2(_objectSpread$2({}, op), {}, {
+          return _objectSpread$7(_objectSpread$7({}, op), {}, {
             path: inversePath,
             newPath: inverseNewPath
           });
@@ -2653,14 +2860,14 @@ var Operation = {
 
       case 'remove_node':
         {
-          return _objectSpread$2(_objectSpread$2({}, op), {}, {
+          return _objectSpread$7(_objectSpread$7({}, op), {}, {
             type: 'insert_node'
           });
         }
 
       case 'remove_text':
         {
-          return _objectSpread$2(_objectSpread$2({}, op), {}, {
+          return _objectSpread$7(_objectSpread$7({}, op), {}, {
             type: 'insert_text'
           });
         }
@@ -2671,7 +2878,7 @@ var Operation = {
             properties,
             newProperties
           } = op;
-          return _objectSpread$2(_objectSpread$2({}, op), {}, {
+          return _objectSpread$7(_objectSpread$7({}, op), {}, {
             properties: newProperties,
             newProperties: properties
           });
@@ -2685,17 +2892,17 @@ var Operation = {
           } = op;
 
           if (_properties == null) {
-            return _objectSpread$2(_objectSpread$2({}, op), {}, {
+            return _objectSpread$7(_objectSpread$7({}, op), {}, {
               properties: _newProperties,
               newProperties: null
             });
           } else if (_newProperties == null) {
-            return _objectSpread$2(_objectSpread$2({}, op), {}, {
+            return _objectSpread$7(_objectSpread$7({}, op), {}, {
               properties: null,
               newProperties: _properties
             });
           } else {
-            return _objectSpread$2(_objectSpread$2({}, op), {}, {
+            return _objectSpread$7(_objectSpread$7({}, op), {}, {
               properties: _newProperties,
               newProperties: _properties
             });
@@ -2704,7 +2911,7 @@ var Operation = {
 
       case 'split_node':
         {
-          return _objectSpread$2(_objectSpread$2({}, op), {}, {
+          return _objectSpread$7(_objectSpread$7({}, op), {}, {
             type: 'merge_node',
             path: Path.next(op.path)
           });
@@ -2981,8 +3188,12 @@ var Path = {
         affinity = 'forward'
       } = options; // PERF: Exit early if the operation is guaranteed not to have an effect.
 
-      if (path.length === 0) {
+      if (!path || (path === null || path === void 0 ? void 0 : path.length) === 0) {
         return;
+      }
+
+      if (p === null) {
+        return null;
       }
 
       switch (operation.type) {
@@ -3127,9 +3338,9 @@ var PathRef = {
 
 };
 
-function ownKeys$3(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); keys.push.apply(keys, symbols); } return keys; }
+function ownKeys$6(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) { symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); } keys.push.apply(keys, symbols); } return keys; }
 
-function _objectSpread$3(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$3(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$3(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
+function _objectSpread$6(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$6(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$6(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
 var Point = {
   /**
    * Compare a point to another, returning an integer indicating whether the
@@ -3182,6 +3393,10 @@ var Point = {
   transform(point, op) {
     var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
     return produce(point, p => {
+      if (p === null) {
+        return null;
+      }
+
       var {
         affinity = 'forward'
       } = options;
@@ -3243,7 +3458,7 @@ var Point = {
                 return null;
               } else if (op.position < offset || op.position === offset && affinity === 'forward') {
                 p.offset -= op.position;
-                p.path = Path.transform(path, op, _objectSpread$3(_objectSpread$3({}, options), {}, {
+                p.path = Path.transform(path, op, _objectSpread$6(_objectSpread$6({}, options), {}, {
                   affinity: 'forward'
                 }));
               }
@@ -3285,9 +3500,11 @@ var PointRef = {
 
 };
 
-function ownKeys$4(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); keys.push.apply(keys, symbols); } return keys; }
+var _excluded$2 = ["anchor", "focus"];
 
-function _objectSpread$4(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$4(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$4(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
+function ownKeys$5(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) { symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); } keys.push.apply(keys, symbols); } return keys; }
+
+function _objectSpread$5(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$5(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$5(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
 var Range = {
   /**
    * Get the start and end points of a range, in the order in which they appear
@@ -3353,7 +3570,7 @@ var Range = {
    * Get the intersection of a range with another.
    */
   intersection(range, another) {
-    var rest = _objectWithoutProperties(range, ["anchor", "focus"]);
+    var rest = _objectWithoutProperties(range, _excluded$2);
 
     var [s1, e1] = Range.edges(range);
     var [s2, e2] = Range.edges(another);
@@ -3363,7 +3580,7 @@ var Range = {
     if (Point.isBefore(end, start)) {
       return null;
     } else {
-      return _objectSpread$4({
+      return _objectSpread$5({
         anchor: start,
         focus: end
       }, rest);
@@ -3440,34 +3657,38 @@ var Range = {
    */
   transform(range, op) {
     var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
-    var {
-      affinity = 'inward'
-    } = options;
-    var affinityAnchor;
-    var affinityFocus;
-
-    if (affinity === 'inward') {
-      if (Range.isForward(range)) {
-        affinityAnchor = 'forward';
-        affinityFocus = 'backward';
-      } else {
-        affinityAnchor = 'backward';
-        affinityFocus = 'forward';
-      }
-    } else if (affinity === 'outward') {
-      if (Range.isForward(range)) {
-        affinityAnchor = 'backward';
-        affinityFocus = 'forward';
-      } else {
-        affinityAnchor = 'forward';
-        affinityFocus = 'backward';
-      }
-    } else {
-      affinityAnchor = affinity;
-      affinityFocus = affinity;
-    }
-
     return produce(range, r => {
+      if (r === null) {
+        return null;
+      }
+
+      var {
+        affinity = 'inward'
+      } = options;
+      var affinityAnchor;
+      var affinityFocus;
+
+      if (affinity === 'inward') {
+        if (Range.isForward(r)) {
+          affinityAnchor = 'forward';
+          affinityFocus = 'backward';
+        } else {
+          affinityAnchor = 'backward';
+          affinityFocus = 'forward';
+        }
+      } else if (affinity === 'outward') {
+        if (Range.isForward(r)) {
+          affinityAnchor = 'backward';
+          affinityFocus = 'forward';
+        } else {
+          affinityAnchor = 'forward';
+          affinityFocus = 'backward';
+        }
+      } else {
+        affinityAnchor = affinity;
+        affinityFocus = affinity;
+      }
+
       var anchor = Point.transform(r.anchor, op, {
         affinity: affinityAnchor
       });
@@ -3512,19 +3733,81 @@ var RangeRef = {
 
 };
 
-function ownKeys$5(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); keys.push.apply(keys, symbols); } return keys; }
+/*
+  Custom deep equal comparison for Slate nodes.
 
-function _objectSpread$5(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$5(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$5(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
+  We don't need general purpose deep equality;
+  Slate only supports plain values, Arrays, and nested objects.
+  Complex values nested inside Arrays are not supported.
+
+  Slate objects are designed to be serialised, so
+  missing keys are deliberately normalised to undefined.
+ */
+
+var isDeepEqual = (node, another) => {
+  for (var key in node) {
+    var a = node[key];
+    var b = another[key];
+
+    if (isPlainObject(a) && isPlainObject(b)) {
+      if (!isDeepEqual(a, b)) return false;
+    } else if (Array.isArray(a) && Array.isArray(b)) {
+      if (a.length !== b.length) return false;
+
+      for (var i = 0; i < a.length; i++) {
+        if (a[i] !== b[i]) return false;
+      }
+
+      return true;
+    } else if (a !== b) {
+      return false;
+    }
+  }
+  /*
+    Deep object equality is only necessary in one direction; in the reverse direction
+    we are only looking for keys that are missing.
+    As above, undefined keys are normalised to missing.
+  */
+
+
+  for (var _key in another) {
+    if (node[_key] === undefined && another[_key] !== undefined) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
+var _excluded$1 = ["anchor", "focus"],
+    _excluded2$1 = ["text"];
+
+function ownKeys$4(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) { symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); } keys.push.apply(keys, symbols); } return keys; }
+
+function _objectSpread$4(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$4(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$4(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
 var Text = {
   /**
    * Check if two text nodes are equal.
+   *
+   * When loose is set, the text is not compared. This is
+   * used to check whether sibling text nodes can be merged.
    */
   equals(text, another) {
     var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
     var {
       loose = false
-    } = options;
-    return isEqual(loose ? omitValue(text) : text, loose ? omitValue(another) : another);
+    } = options; // <<<<<<< HEAD
+    //     function omitText(obj: Record<any, any>) {
+    //       const { text, ...rest } = obj
+    //       return rest
+    //     }
+    //     return isDeepEqual(
+    //       loose ? omitText(text) : text,
+    //       loose ? omitText(another) : another
+    // =======
+
+    return isDeepEqual(loose ? omitValue(text) : text, loose ? omitValue(another) : another // >>>>>>> feat: unist compatibility
+    );
   },
 
   /**
@@ -3572,10 +3855,10 @@ var Text = {
    * Get the leaves for a text node given decorations.
    */
   decorations(node, decorations) {
-    var leaves = [_objectSpread$5({}, node)];
+    var leaves = [_objectSpread$4({}, node)];
 
     for (var dec of decorations) {
-      var rest = _objectWithoutProperties(dec, ["anchor", "focus"]);
+      var rest = _objectWithoutProperties(dec, _excluded$1);
 
       var [start, end] = Range.edges(dec);
       var next = [];
@@ -3609,10 +3892,10 @@ var Text = {
 
         if (end.offset < o) {
           var off = end.offset - offset;
-          after = _objectSpread$5(_objectSpread$5({}, middle), {}, {
+          after = _objectSpread$4(_objectSpread$4({}, middle), {}, {
             value: middle.value.slice(off)
           });
-          middle = _objectSpread$5(_objectSpread$5({}, middle), {}, {
+          middle = _objectSpread$4(_objectSpread$4({}, middle), {}, {
             value: middle.value.slice(0, off)
           });
         }
@@ -3620,10 +3903,10 @@ var Text = {
         if (start.offset > offset) {
           var _off = start.offset - offset;
 
-          before = _objectSpread$5(_objectSpread$5({}, middle), {}, {
+          before = _objectSpread$4(_objectSpread$4({}, middle), {}, {
             value: middle.value.slice(0, _off)
           });
-          middle = _objectSpread$5(_objectSpread$5({}, middle), {}, {
+          middle = _objectSpread$4(_objectSpread$4({}, middle), {}, {
             value: middle.value.slice(_off)
           });
         }
@@ -3650,14 +3933,14 @@ var Text = {
 };
 
 function omitValue(obj) {
-  var rest = _objectWithoutProperties(obj, ["text"]);
+  var rest = _objectWithoutProperties(obj, _excluded2$1);
 
   return rest;
 }
 
-function ownKeys$6(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); keys.push.apply(keys, symbols); } return keys; }
+function ownKeys$3(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) { symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); } keys.push.apply(keys, symbols); } return keys; }
 
-function _objectSpread$6(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$6(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$6(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
+function _objectSpread$3(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$3(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$3(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
 
 var applyToDraft = (editor, selection, op) => {
   switch (op.type) {
@@ -3816,7 +4099,17 @@ var applyToDraft = (editor, selection, op) => {
                 }
               }
 
-              if (_prev) {
+              var preferNext = false;
+
+              if (_prev && next) {
+                if (Path.equals(next[1], _path4)) {
+                  preferNext = !Path.hasPrevious(next[1]);
+                } else {
+                  preferNext = Path.common(_prev[1], _path4).length < Path.common(next[1], _path4).length;
+                }
+              }
+
+              if (_prev && !preferNext) {
                 _point4.path = _prev[1];
                 _point4.offset = _prev[0].value.length;
               } else if (next) {
@@ -3910,7 +4203,7 @@ var applyToDraft = (editor, selection, op) => {
               throw new Error("Cannot apply an incomplete \"set_selection\" operation properties ".concat(JSON.stringify(_newProperties), " when there is no current selection."));
             }
 
-            selection = _objectSpread$6({}, _newProperties);
+            selection = _objectSpread$3({}, _newProperties);
           }
 
           for (var _key8 in _newProperties) {
@@ -3956,7 +4249,7 @@ var applyToDraft = (editor, selection, op) => {
           var _after2 = _node6.value.slice(position);
 
           _node6.value = _before2;
-          newNode = _objectSpread$6(_objectSpread$6({}, _properties), {}, {
+          newNode = _objectSpread$3(_objectSpread$3({}, _properties), {}, {
             value: _after2
           });
         } else {
@@ -3965,7 +4258,7 @@ var applyToDraft = (editor, selection, op) => {
           var _after3 = _node6.children.slice(position);
 
           _node6.children = _before3;
-          newNode = _objectSpread$6(_objectSpread$6({}, _properties), {}, {
+          newNode = _objectSpread$3(_objectSpread$3({}, _properties), {}, {
             children: _after3
           });
         }
@@ -4008,9 +4301,12 @@ var GeneralTransforms = {
 
 };
 
-function ownKeys$7(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); keys.push.apply(keys, symbols); } return keys; }
+var _excluded = ["value"],
+    _excluded2 = ["children"];
 
-function _objectSpread$7(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$7(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$7(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
+function ownKeys$2(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) { symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); } keys.push.apply(keys, symbols); } return keys; }
+
+function _objectSpread$2(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$2(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$2(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
 var NodeTransforms = {
   /**
    * Insert nodes at a specific location in the Editor.
@@ -4127,7 +4423,10 @@ var NodeTransforms = {
           path: _path,
           node: _node
         });
+        at = Path.next(at);
       }
+
+      at = Path.previous(at);
 
       if (select) {
         var point = Editor.end(editor, at);
@@ -4169,7 +4468,7 @@ var NodeTransforms = {
         mode,
         voids
       });
-      var pathRefs = Array.from(matches, (_ref) => {
+      var pathRefs = Array.from(matches, _ref => {
         var [, p] = _ref;
         return Editor.pathRef(editor, p);
       });
@@ -4313,7 +4612,7 @@ var NodeTransforms = {
       var isPreviousSibling = Path.isSibling(path, prevPath);
       var levels = Array.from(Editor.levels(editor, {
         at: path
-      }), (_ref2) => {
+      }), _ref2 => {
         var [n] = _ref2;
         return n;
       }).slice(commonPath.length).slice(0, -1); // Determine if the merge will leave an ancestor of the path empty as a
@@ -4330,12 +4629,12 @@ var NodeTransforms = {
       // and extra properties of the merge will be.
 
       if (Text.isText(node) && Text.isText(prevNode)) {
-        var rest = _objectWithoutProperties(node, ["value"]);
+        var rest = _objectWithoutProperties(node, _excluded);
 
         position = prevNode.value.length;
         properties = rest;
       } else if (Element.isElement(node) && Element.isElement(prevNode)) {
-        var rest = _objectWithoutProperties(node, ["children"]);
+        var rest = _objectWithoutProperties(node, _excluded2);
 
         position = prevNode.children.length;
         properties = rest;
@@ -4417,7 +4716,7 @@ var NodeTransforms = {
         mode,
         voids
       });
-      var pathRefs = Array.from(targets, (_ref3) => {
+      var pathRefs = Array.from(targets, _ref3 => {
         var [, p] = _ref3;
         return Editor.pathRef(editor, p);
       });
@@ -4480,7 +4779,7 @@ var NodeTransforms = {
         mode,
         voids
       });
-      var pathRefs = Array.from(depths, (_ref4) => {
+      var pathRefs = Array.from(depths, _ref4 => {
         var [, p] = _ref4;
         return Editor.pathRef(editor, p);
       });
@@ -4571,19 +4870,23 @@ var NodeTransforms = {
           continue;
         }
 
+        var hasChanges = false;
+
         for (var k in props) {
           if (k === 'children' || k === 'text') {
             continue;
           }
 
           if (props[k] !== node[k]) {
-            // Omit new properties from the old property list rather than set them to undefined
-            if (node.hasOwnProperty(k)) properties[k] = node[k];
-            newProperties[k] = props[k];
+            hasChanges = true; // Omit new properties from the old properties list
+
+            if (node.hasOwnProperty(k)) properties[k] = node[k]; // Omit properties that have been removed from the new properties list
+
+            if (props[k] != null) newProperties[k] = props[k];
           }
         }
 
-        if (Object.keys(newProperties).length !== 0) {
+        if (hasChanges) {
           editor.apply({
             type: 'set_node',
             path,
@@ -4785,10 +5088,13 @@ var NodeTransforms = {
         mode,
         voids
       });
-      var pathRefs = Array.from(matches, (_ref5) => {
+      var pathRefs = Array.from(matches, _ref5 => {
         var [, p] = _ref5;
         return Editor.pathRef(editor, p);
-      });
+      } // unwrapNode will call liftNode which does not support splitting the node when nested.
+      // If we do not reverse the order and call it from top to the bottom, it will remove all blocks
+      // that wrap target node. So we reverse the order.
+      ).reverse();
 
       var _loop = function _loop(pathRef) {
         var path = pathRef.unref();
@@ -4909,7 +5215,7 @@ var NodeTransforms = {
             var depth = commonPath.length + 1;
             var wrapperPath = Path.next(lastPath.slice(0, depth));
 
-            var wrapper = _objectSpread$7(_objectSpread$7({}, element), {}, {
+            var wrapper = _objectSpread$2(_objectSpread$2({}, element), {}, {
               children: []
             });
 
@@ -4973,9 +5279,9 @@ var matchPath = (editor, path) => {
   return n => n === node;
 };
 
-function ownKeys$8(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); keys.push.apply(keys, symbols); } return keys; }
+function ownKeys$1(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) { symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); } keys.push.apply(keys, symbols); } return keys; }
 
-function _objectSpread$8(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$8(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$8(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
+function _objectSpread$1(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$1(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$1(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
 var SelectionTransforms = {
   /**
    * Collapse the selection.
@@ -5134,7 +5440,7 @@ var SelectionTransforms = {
     } = selection;
     var point = edge === 'anchor' ? anchor : focus;
     Transforms.setSelection(editor, {
-      [edge === 'anchor' ? 'anchor' : 'focus']: _objectSpread$8(_objectSpread$8({}, point), props)
+      [edge === 'anchor' ? 'anchor' : 'focus']: _objectSpread$1(_objectSpread$1({}, point), props)
     });
   },
 
@@ -5301,7 +5607,7 @@ var TextTransforms = {
         }
       }
 
-      var pathRefs = Array.from(matches, (_ref) => {
+      var pathRefs = Array.from(matches, _ref => {
         var [, p] = _ref;
         return Editor.pathRef(editor, p);
       });
@@ -5453,6 +5759,7 @@ var TextTransforms = {
       var [, blockPath] = blockMatch;
       var isBlockStart = Editor.isStart(editor, at, blockPath);
       var isBlockEnd = Editor.isEnd(editor, at, blockPath);
+      var isBlockEmpty = isBlockStart && isBlockEnd;
       var mergeStart = !isBlockStart || isBlockStart && isBlockEnd;
       var mergeEnd = !isBlockEnd;
       var [, firstPath] = Node.first({
@@ -5463,8 +5770,17 @@ var TextTransforms = {
       }, []);
       var matches = [];
 
-      var matcher = (_ref2) => {
+      var matcher = _ref2 => {
         var [n, p] = _ref2;
+        var isRoot = p.length === 0;
+
+        if (isRoot) {
+          return false;
+        }
+
+        if (isBlockEmpty) {
+          return true;
+        }
 
         if (mergeStart && Path.isAncestor(p, firstPath) && Element.isElement(n) && !editor.isVoid(n) && !editor.isInline(n)) {
           return false;
@@ -5482,7 +5798,7 @@ var TextTransforms = {
       }, {
         pass: matcher
       })) {
-        if (entry[1].length > 0 && matcher(entry)) {
+        if (matcher(entry)) {
           matches.push(entry);
         }
       }
@@ -5516,6 +5832,7 @@ var TextTransforms = {
       var isInlineEnd = Editor.isEnd(editor, at, inlinePath);
       var middleRef = Editor.pathRef(editor, isBlockEnd ? Path.next(blockPath) : blockPath);
       var endRef = Editor.pathRef(editor, isInlineEnd ? Path.next(inlinePath) : inlinePath);
+      var blockPathRef = Editor.pathRef(editor, blockPath);
       Transforms.splitNodes(editor, {
         at,
         match: n => hasBlocks ? Editor.isBlock(editor, n) : Text.isText(n) || Editor.isInline(editor, n),
@@ -5529,6 +5846,14 @@ var TextTransforms = {
         mode: 'highest',
         voids
       });
+
+      if (isBlockEmpty && middles.length) {
+        Transforms.delete(editor, {
+          at: blockPathRef.unref(),
+          voids
+        });
+      }
+
       Transforms.insertNodes(editor, middles, {
         at: middleRef.current,
         match: n => Editor.isBlock(editor, n),
@@ -5631,10 +5956,10 @@ var TextTransforms = {
 
 };
 
-function ownKeys$9(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); keys.push.apply(keys, symbols); } return keys; }
+function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) { symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); } keys.push.apply(keys, symbols); } return keys; }
 
-function _objectSpread$9(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$9(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$9(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
-var Transforms = _objectSpread$9(_objectSpread$9(_objectSpread$9(_objectSpread$9({}, GeneralTransforms), NodeTransforms), SelectionTransforms), TextTransforms);
+function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
+var Transforms = _objectSpread(_objectSpread(_objectSpread(_objectSpread({}, GeneralTransforms), NodeTransforms), SelectionTransforms), TextTransforms);
 
 export { Editor, Element, Location, Node, Operation, Path, PathRef, Point, PointRef, Range, RangeRef, Span, Text, Transforms, createEditor };
 //# sourceMappingURL=index.es.js.map
