@@ -106,10 +106,10 @@ export class AndroidInputManager {
 
     // Insert the batched text diffs
     insertedText.forEach(insertion => {
-      const text = insertion.text.insertText
+      const value = insertion.text.insertText
       const at = normalizeTextInsertionRange(this.editor, selection, insertion)
       if (marks) {
-        const node = { text, ...marks }
+        const node = { type: 'text', value, ...marks }
         Transforms.insertNodes(this.editor, node, {
           match: Text.isText,
           at,
@@ -117,7 +117,7 @@ export class AndroidInputManager {
         })
         this.editor.marks = null
       } else {
-        Transforms.insertText(this.editor, text, {
+        Transforms.insertText(this.editor, value, {
           at,
         })
       }

@@ -70,4 +70,10 @@ export declare const getEditableChild: (parent: DOMElement, index: number, direc
  * The domNode must be attached to the DOM.
  */
 export declare const getPlainText: (domNode: DOMNode) => string;
+export declare const getSlateFragmentAttribute: (dataTransfer: DataTransfer) => string | void;
+/**
+ * Get the x-slate-fragment attribute that exist in text/html data
+ * and append it to the DataTransfer object
+ */
+export declare const getClipboardData: (dataTransfer: DataTransfer) => DataTransfer;
 //# sourceMappingURL=dom.d.ts.map

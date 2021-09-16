@@ -4,7 +4,6 @@ import getDirection from 'direction';
 import throttle from 'lodash/throttle';
 import scrollIntoView from 'scroll-into-view-if-needed';
 import { isKeyHotkey } from 'is-hotkey';
-import invariant from 'tiny-invariant';
 import ReactDOM from 'react-dom';
 
 function _defineProperty(obj, key, value) {
@@ -117,8 +116,20 @@ var TextString = props => {
     text,
     isTrailing = false
   } = props;
+  var ref = useRef(null);
+  var forceUpdateFlag = useRef(false);
+
+  if (ref.current && ref.current.textContent !== text) {
+    forceUpdateFlag.current = !forceUpdateFlag.current;
+  } // This component may have skipped rendering due to native operations being
+  // applied. If an undo is performed React will see the old and new shadow DOM
+  // match and not apply an update. Forces each render to actually reconcile.
+
+
   return /*#__PURE__*/React.createElement("span", {
-    "data-slate-string": true
+    "data-slate-string": true,
+    ref: ref,
+    key: forceUpdateFlag.current ? 'A' : 'B'
   }, text, isTrailing ? '\n' : null);
 };
 /**
@@ -151,9 +162,9 @@ var NODE_TO_PARENT = new WeakMap();
 var EDITOR_TO_WINDOW = new WeakMap();
 var EDITOR_TO_ELEMENT = new WeakMap();
 var ELEMENT_TO_NODE = new WeakMap();
-var KEY_TO_ELEMENT = new WeakMap();
 var NODE_TO_ELEMENT = new WeakMap();
 var NODE_TO_KEY = new WeakMap();
+var EDITOR_TO_KEY_TO_ELEMENT = new WeakMap();
 /**
  * Weak maps for storing editor-related state.
  */
@@ -172,9 +183,6 @@ var EDITOR_TO_RESTORE_DOM = new WeakMap();
 
 var PLACEHOLDER_SYMBOL = Symbol('placeholder');
 
-// prevent inconsistent rendering by React with IME input
-
-var keyForString = 0;
 /**
  * Individual leaves in a text node with unique formatting.
  */
@@ -203,7 +211,6 @@ var Leaf = props => {
     };
   }, [placeholderRef, leaf]);
   var children = /*#__PURE__*/React.createElement(String, {
-    key: keyForString++,
     isLast: isLast,
     leaf: leaf,
     parent: parent,
@@ -269,7 +276,9 @@ var IS_CHROME = typeof navigator !== 'undefined' && /Chrome/i.test(navigator.use
 
 var IS_CHROME_LEGACY = typeof navigator !== 'undefined' && /Chrome?\/(?:[0-7][0-5]|[0-6][0-9])/i.test(navigator.userAgent); // Firefox did not support `beforeInput` until `v87`.
 
-var IS_FIREFOX_LEGACY = typeof navigator !== 'undefined' && /^(?!.*Seamonkey)(?=.*Firefox\/(?:[0-7][0-9]|[0-8][0-6])).*/i.test(navigator.userAgent); // Check if DOM is available as React does internally.
+var IS_FIREFOX_LEGACY = typeof navigator !== 'undefined' && /^(?!.*Seamonkey)(?=.*Firefox\/(?:[0-7][0-9]|[0-8][0-6])).*/i.test(navigator.userAgent); // qq browser
+
+var IS_QQBROWSER = typeof navigator !== 'undefined' && /.*QQBrowser/.test(navigator.userAgent); // Check if DOM is available as React does internally.
 // https://github.com/facebook/react/blob/master/packages/shared/ExecutionEnvironment.js
 
 var CAN_USE_DOM = !!(typeof window !== 'undefined' && typeof window.document !== 'undefined' && typeof window.document.createElement !== 'undefined'); // COMPAT: Firefox/Edge Legacy don't support the `beforeinput` event
@@ -285,6 +294,8 @@ typeof globalThis.InputEvent.prototype.getTargetRanges === 'function';
 
 var useIsomorphicLayoutEffect = CAN_USE_DOM ? useLayoutEffect : useEffect;
 
+var _excluded$3 = ["anchor", "focus"],
+    _excluded2 = ["anchor", "focus"];
 var shallowCompare = (obj1, obj2) => Object.keys(obj1).length === Object.keys(obj2).length && Object.keys(obj1).every(key => obj2.hasOwnProperty(key) && obj1[key] === obj2[key]);
 /**
  * Check if a list of decorator ranges are equal to another.
@@ -303,9 +314,9 @@ var isDecoratorRangeListEqual = (list, another) => {
     var range = list[i];
     var other = another[i];
 
-    var rangeOwnProps = _objectWithoutProperties(range, ["anchor", "focus"]);
+    var rangeOwnProps = _objectWithoutProperties(range, _excluded$3);
 
-    var otherOwnProps = _objectWithoutProperties(other, ["anchor", "focus"]);
+    var otherOwnProps = _objectWithoutProperties(other, _excluded2);
 
     if (!Range.equals(range, other) || range[PLACEHOLDER_SYMBOL] !== other[PLACEHOLDER_SYMBOL] || !shallowCompare(rangeOwnProps, otherOwnProps)) {
       return false;
@@ -349,12 +360,14 @@ var Text = props => {
 
 
   useIsomorphicLayoutEffect(() => {
+    var KEY_TO_ELEMENT = EDITOR_TO_KEY_TO_ELEMENT.get(editor);
+
     if (ref.current) {
-      KEY_TO_ELEMENT.set(key, ref.current);
+      KEY_TO_ELEMENT === null || KEY_TO_ELEMENT === void 0 ? void 0 : KEY_TO_ELEMENT.set(key, ref.current);
       NODE_TO_ELEMENT.set(text, ref.current);
       ELEMENT_TO_NODE.set(ref.current, text);
     } else {
-      KEY_TO_ELEMENT.delete(key);
+      KEY_TO_ELEMENT === null || KEY_TO_ELEMENT === void 0 ? void 0 : KEY_TO_ELEMENT.delete(key);
       NODE_TO_ELEMENT.delete(text);
     }
   });
@@ -367,19 +380,6 @@ var Text = props => {
 var MemoizedText = /*#__PURE__*/React.memo(Text, (prev, next) => {
   return next.parent === prev.parent && next.isLast === prev.isLast && next.renderLeaf === prev.renderLeaf && next.text === prev.text && isDecoratorRangeListEqual(next.decorations, prev.decorations);
 });
-
-/**
- * A React context for sharing the `selected` state of an element.
- */
-
-var SelectedContext = /*#__PURE__*/createContext(false);
-/**
- * Get the current `selected` state of an element.
- */
-
-var useSelected = () => {
-  return useContext(SelectedContext);
-};
 
 /**
  * Element.
@@ -460,22 +460,22 @@ var Element = props => {
 
 
   useIsomorphicLayoutEffect(() => {
+    var KEY_TO_ELEMENT = EDITOR_TO_KEY_TO_ELEMENT.get(editor);
+
     if (ref.current) {
-      KEY_TO_ELEMENT.set(key, ref.current);
+      KEY_TO_ELEMENT === null || KEY_TO_ELEMENT === void 0 ? void 0 : KEY_TO_ELEMENT.set(key, ref.current);
       NODE_TO_ELEMENT.set(element, ref.current);
       ELEMENT_TO_NODE.set(ref.current, element);
     } else {
-      KEY_TO_ELEMENT.delete(key);
+      KEY_TO_ELEMENT === null || KEY_TO_ELEMENT === void 0 ? void 0 : KEY_TO_ELEMENT.delete(key);
       NODE_TO_ELEMENT.delete(element);
     }
   });
-  return /*#__PURE__*/React.createElement(SelectedContext.Provider, {
-    value: !!selection
-  }, renderElement({
+  return renderElement({
     attributes,
     children,
     element
-  }));
+  });
 };
 
 var MemoizedElement = /*#__PURE__*/React.memo(Element, (prev, next) => {
@@ -533,6 +533,19 @@ var useDecorate = () => {
 };
 
 /**
+ * A React context for sharing the `selected` state of an element.
+ */
+
+var SelectedContext = /*#__PURE__*/createContext(false);
+/**
+ * Get the current `selected` state of an element.
+ */
+
+var useSelected = () => {
+  return useContext(SelectedContext);
+};
+
+/**
  * Children.
  */
 
@@ -568,7 +581,10 @@ var useChildren = props => {
     }
 
     if (Element$1.isElement(n)) {
-      children.push( /*#__PURE__*/React.createElement(MemoizedElement, {
+      children.push( /*#__PURE__*/React.createElement(SelectedContext.Provider, {
+        key: "provider-".concat(key.id),
+        value: !!sel
+      }, /*#__PURE__*/React.createElement(MemoizedElement, {
         decorations: ds,
         element: n,
         key: key.id,
@@ -576,7 +592,7 @@ var useChildren = props => {
         renderPlaceholder: renderPlaceholder,
         renderLeaf: renderLeaf,
         selection: sel
-      }));
+      })));
     } else {
       children.push( /*#__PURE__*/React.createElement(MemoizedText, {
         decorations: ds,
@@ -712,7 +728,7 @@ var useSlate = () => {
   var context = useContext(SlateContext);
 
   if (!context) {
-    throw new Error("The `useSlate` hook must be used inside the <SlateProvider> component's context.");
+    throw new Error("The `useSlate` hook must be used inside the <Slate> component's context.");
   }
 
   var [editor] = context;
@@ -886,10 +902,78 @@ var getPlainText = domNode => {
 
   return text;
 };
+/**
+ * Get x-slate-fragment attribute from data-slate-fragment
+ */
 
-function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); keys.push.apply(keys, symbols); } return keys; }
+var catchSlateFragment = /data-slate-fragment="(.+?)"/m;
+var getSlateFragmentAttribute = dataTransfer => {
+  var htmlData = dataTransfer.getData('text/html');
+  var [, fragment] = htmlData.match(catchSlateFragment) || [];
+  return fragment;
+};
+/**
+ * Get the x-slate-fragment attribute that exist in text/html data
+ * and append it to the DataTransfer object
+ */
 
-function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
+var getClipboardData = dataTransfer => {
+  if (!dataTransfer.getData('application/x-slate-fragment')) {
+    var fragment = getSlateFragmentAttribute(dataTransfer);
+
+    if (fragment) {
+      var clipboardData = new DataTransfer();
+      dataTransfer.types.forEach(type => {
+        clipboardData.setData(type, dataTransfer.getData(type));
+      });
+      clipboardData.setData('application/x-slate-fragment', fragment);
+      return clipboardData;
+    }
+  }
+
+  return dataTransfer;
+};
+
+var AS_NATIVE = new WeakMap();
+var NATIVE_OPERATIONS = new WeakMap();
+/**
+ * `asNative` queues operations as native, meaning native browser events will
+ * not have been prevented, and we need to flush the operations
+ * after the native events have propogated to the DOM.
+ * @param {Editor} editor - Editor on which the operations are being applied
+ * @param {callback} fn - Function containing .exec calls which will be queued as native
+ */
+
+var asNative = (editor, fn) => {
+  AS_NATIVE.set(editor, true);
+  fn();
+  AS_NATIVE.set(editor, false);
+};
+/**
+ * `flushNativeEvents` applies any queued native events.
+ * @param {Editor} editor - Editor on which the operations are being applied
+ */
+
+var flushNativeEvents = editor => {
+  var nativeOps = NATIVE_OPERATIONS.get(editor); // Clear list _before_ applying, as we might flush
+  // events in each op, as well.
+
+  NATIVE_OPERATIONS.set(editor, []);
+
+  if (nativeOps) {
+    Editor.withoutNormalizing(editor, () => {
+      nativeOps.forEach(op => {
+        editor.apply(op);
+      });
+    });
+  }
+};
+
+var _excluded$2 = ["autoFocus", "decorate", "onDOMBeforeInput", "placeholder", "readOnly", "renderElement", "renderLeaf", "renderPlaceholder", "scrollSelectionIntoView", "style", "as"];
+
+function ownKeys$2(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) { symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); } keys.push.apply(keys, symbols); } return keys; }
+
+function _objectSpread$2(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$2(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$2(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
 
 var Children = props => /*#__PURE__*/React.createElement(React.Fragment, null, useChildren(props));
 /**
@@ -897,7 +981,7 @@ var Children = props => /*#__PURE__*/React.createElement(React.Fragment, null, u
  */
 
 
-var Editable = props => {
+var Editable$1 = props => {
   var {
     autoFocus,
     decorate = defaultDecorate,
@@ -911,7 +995,7 @@ var Editable = props => {
     style = {},
     as: Component = 'div'
   } = props,
-      attributes = _objectWithoutProperties(props, ["autoFocus", "decorate", "onDOMBeforeInput", "placeholder", "readOnly", "renderElement", "renderLeaf", "renderPlaceholder", "scrollSelectionIntoView", "style", "as"]);
+      attributes = _objectWithoutProperties(props, _excluded$2);
 
   var editor = useSlate(); // Rerender editor when composition status changed
 
@@ -922,6 +1006,7 @@ var Editable = props => {
 
   var state = useMemo(() => ({
     isComposing: false,
+    hasInsertPrefixInCompositon: false,
     isDraggingInternally: false,
     isUpdatingSelection: false,
     latestElement: null
@@ -1040,9 +1125,47 @@ var Editable = props => {
         return;
       }
 
-      event.preventDefault(); // COMPAT: For the deleting forward/backward input types we don't want
+      var native = false;
+
+      if (type === 'insertText' && selection && Range.isCollapsed(selection) && // Only use native character insertion for single characters a-z or space for now.
+      // Long-press events (hold a + press 4 = ä) to choose a special character otherwise
+      // causes duplicate inserts.
+      event.data && event.data.length === 1 && /[a-z ]/i.test(event.data) && // Chrome seems to have issues correctly editing the start of nodes.
+      // When there is an inline element, e.g. a link, and you select
+      // right after it (the start of the next node).
+      selection.anchor.offset !== 0) {
+        native = true; // Skip native if there are marks, as
+        // `insertText` will insert a node, not just text.
+
+        if (editor.marks) {
+          native = false;
+        } // and because of the selection moving in `insertText` (create-editor.ts).
+
+
+        var {
+          anchor
+        } = selection;
+        var inline = Editor.above(editor, {
+          at: anchor,
+          match: n => Editor.isInline(editor, n),
+          mode: 'highest'
+        });
+
+        if (inline) {
+          var [, inlinePath] = inline;
+
+          if (Editor.isEnd(editor, selection.anchor, inlinePath)) {
+            native = false;
+          }
+        }
+      }
+
+      if (!native) {
+        event.preventDefault();
+      } // COMPAT: For the deleting forward/backward input types we don't want
       // to change the selection because it is the range that will be deleted,
       // and those commands determine that for themselves.
+
 
       if (!type.startsWith('delete') || type.startsWith('deleteBy')) {
         var [targetRange] = event.getTargetRanges();
@@ -1178,7 +1301,13 @@ var Editable = props => {
             if (data instanceof window.DataTransfer) {
               ReactEditor.insertData(editor, data);
             } else if (typeof data === 'string') {
-              Editor.insertText(editor, data);
+              // Only insertText operations use the native functionality, for now.
+              // Potentially expand to single character deletes, as well.
+              if (native) {
+                asNative(editor, () => Editor.insertText(editor, data));
+              } else {
+                Editor.insertText(editor, data);
+              }
             }
 
             break;
@@ -1244,7 +1373,8 @@ var Editable = props => {
         Transforms.deselect(editor);
       }
     }
-  }, 100), [readOnly]); // Attach a native DOM event handler for `selectionchange`, because React's
+  }, 100), [readOnly]);
+  var scheduleOnDOMSelectionChange = useCallback(() => setTimeout(onDOMSelectionChange), [onDOMSelectionChange]); // Attach a native DOM event handler for `selectionchange`, because React's
   // built-in `onSelect` handler doesn't fire for all selection changes. It's a
   // leaky polyfill that only fires on keypresses or clicks. Instead, we want to
   // fire for any change to the selection inside the editor. (2019/11/04)
@@ -1252,11 +1382,11 @@ var Editable = props => {
 
   useIsomorphicLayoutEffect(() => {
     var window = ReactEditor.getWindow(editor);
-    window.document.addEventListener('selectionchange', onDOMSelectionChange);
+    window.document.addEventListener('selectionchange', scheduleOnDOMSelectionChange);
     return () => {
-      window.document.removeEventListener('selectionchange', onDOMSelectionChange);
+      window.document.removeEventListener('selectionchange', scheduleOnDOMSelectionChange);
     };
-  }, [onDOMSelectionChange]);
+  }, [scheduleOnDOMSelectionChange]);
   var decorations = decorate([editor, []]);
 
   if (placeholder && editor.children.length === 1 && Array.from(Node.texts(editor)).length === 1 && Node.string(editor) === '' && !isComposing) {
@@ -1290,7 +1420,7 @@ var Editable = props => {
     contentEditable: readOnly ? undefined : true,
     suppressContentEditableWarning: true,
     ref: ref,
-    style: _objectSpread({
+    style: _objectSpread$2({
       // Allow positioning relative to the editable element.
       position: 'relative',
       // Prevent the default outline styles.
@@ -1313,6 +1443,13 @@ var Editable = props => {
         }
       }
     }, [readOnly]),
+    onInput: useCallback(event => {
+      // Flush native operations, as native events will have propogated
+      // and we can correctly compare DOM text values in components
+      // to stop rendering, so that browser functions like autocorrect
+      // and spellcheck work as expected.
+      flushNativeEvents(editor);
+    }, []),
     onBlur: useCallback(event => {
       if (readOnly || state.isUpdatingSelection || !hasEditableTarget(editor, event.target) || isEventHandled(event, attributes.onBlur)) {
         return;
@@ -1395,8 +1532,26 @@ var Editable = props => {
         // type that we need. So instead, insert whenever a composition
         // ends since it will already have been committed to the DOM.
 
-        if (!IS_SAFARI && !IS_FIREFOX_LEGACY && !IS_IOS && event.data) {
+        if (!IS_SAFARI && !IS_FIREFOX_LEGACY && !IS_IOS && !IS_QQBROWSER && event.data) {
           Editor.insertText(editor, event.data);
+        }
+
+        if (editor.selection && Range.isCollapsed(editor.selection)) {
+          var leafPath = editor.selection.anchor.path;
+          var currentTextNode = Node.leaf(editor, leafPath);
+
+          if (state.hasInsertPrefixInCompositon) {
+            state.hasInsertPrefixInCompositon = false;
+            Editor.withoutNormalizing(editor, () => {
+              // remove Unicode BOM prefix added in `onCompositionStart`
+              var text = currentTextNode.value.replace(/^\uFEFF/, '');
+              Transforms.delete(editor, {
+                distance: currentTextNode.value.length,
+                reverse: true
+              });
+              Transforms.insertText(editor, text);
+            });
+          }
         }
       }
     }, [attributes.onCompositionEnd]),
@@ -1409,11 +1564,44 @@ var Editable = props => {
     onCompositionStart: useCallback(event => {
       if (hasEditableTarget(editor, event.target) && !isEventHandled(event, attributes.onCompositionStart)) {
         var {
-          selection
+          selection,
+          marks
         } = editor;
 
-        if (selection && Range.isExpanded(selection)) {
-          Editor.deleteFragment(editor);
+        if (selection) {
+          if (Range.isExpanded(selection)) {
+            Editor.deleteFragment(editor);
+            return;
+          }
+
+          var inline = Editor.above(editor, {
+            match: n => Editor.isInline(editor, n),
+            mode: 'highest'
+          });
+
+          if (inline) {
+            var [, inlinePath] = inline;
+
+            if (Editor.isEnd(editor, selection.anchor, inlinePath)) {
+              var point = Editor.after(editor, inlinePath);
+              Transforms.setSelection(editor, {
+                anchor: point,
+                focus: point
+              });
+            }
+          } // insert new node in advance to ensure composition text will insert
+          // along with final input text
+          // add Unicode BOM prefix to avoid normalize removing this node
+
+
+          if (marks) {
+            state.hasInsertPrefixInCompositon = true;
+            Transforms.insertNodes(editor, _objectSpread$2({
+              value: '\uFEFF'
+            }, marks), {
+              select: true
+            });
+          }
         }
       }
     }, [attributes.onCompositionStart]),
@@ -1528,7 +1716,7 @@ var Editable = props => {
       }
     }, [readOnly, attributes.onFocus]),
     onKeyDown: useCallback(event => {
-      if (!readOnly && hasEditableTarget(editor, event.target) && !isEventHandled(event, attributes.onKeyDown)) {
+      if (!readOnly && !state.isComposing && hasEditableTarget(editor, event.target) && !isEventHandled(event, attributes.onKeyDown)) {
         var {
           nativeEvent
         } = event;
@@ -1824,7 +2012,7 @@ var Editable = props => {
  * The default placeholder element
  */
 
-var DefaultPlaceholder = (_ref) => {
+var DefaultPlaceholder = _ref => {
   var {
     attributes,
     children
@@ -2046,7 +2234,7 @@ var ReactEditor = {
    * Deselect the editor.
    */
   deselect(editor) {
-    var el = ReactEditor.toDOMNode(editor, editor);
+    ReactEditor.toDOMNode(editor, editor);
     var {
       selection
     } = editor;
@@ -2109,7 +2297,8 @@ var ReactEditor = {
    * Find the native DOM element from a Slate node.
    */
   toDOMNode(editor, node) {
-    var domNode = Editor.isEditor(node) ? EDITOR_TO_ELEMENT.get(editor) : KEY_TO_ELEMENT.get(ReactEditor.findKey(editor, node));
+    var KEY_TO_ELEMENT = EDITOR_TO_KEY_TO_ELEMENT.get(editor);
+    var domNode = Editor.isEditor(node) ? EDITOR_TO_ELEMENT.get(editor) : KEY_TO_ELEMENT === null || KEY_TO_ELEMENT === void 0 ? void 0 : KEY_TO_ELEMENT.get(ReactEditor.findKey(editor, node));
 
     if (!domNode) {
       throw new Error("Cannot resolve a DOM node from Slate node: ".concat(JSON.stringify(node)));
@@ -2392,10 +2581,60 @@ var ReactEditor = {
         anchorNode = domRange.anchorNode;
         anchorOffset = domRange.anchorOffset;
         focusNode = domRange.focusNode;
-        focusOffset = domRange.focusOffset; // COMPAT: There's a bug in chrome that always returns `true` for
+        focusOffset = domRange.focusOffset; // When triple clicking a block, Chrome will return a selection object whose
+        // focus node is the next element sibling and focusOffset is 0.
+        // This will highlight the corresponding toolbar button for the sibling
+        // block even though users just want to target the previous block.
+        // (2021/08/24)
+        // Signs of a triple click in Chrome
+        // - anchor node will be a text node but focus node won't
+        // - both anchorOffset and focusOffset are 0
+        // - focusNode value will be null since Chrome tries to extend to just the
+        // beginning of the next block
+
+        if (IS_CHROME && anchorNode && focusNode && anchorNode.nodeType !== focusNode.nodeType && domRange.anchorOffset === 0 && domRange.focusOffset === 0 && focusNode.nodeValue == null) {
+          // If an anchorNode is an element node when triple clicked, then the focusNode
+          //  should also be the same as anchorNode when triple clicked.
+          // Otherwise, anchorNode is a text node and we need to
+          // - climb up the DOM tree to get the farthest element node that receives
+          //   triple click. It should have atribute 'data-slate-node' = "element"
+          // - get the last child of that element node
+          // - climb down the DOM tree to get the text node of the last child
+          // - this is also the end of the selection aka the focusNode
+          var anchorElement = anchorNode.parentNode;
+          var selectedBlock = anchorElement.closest('[data-slate-node="element"]');
+
+          if (selectedBlock) {
+            // The Slate Text nodes are leaf-level and contains document's text.
+            // However, when represented in the DOM, they are actually Element nodes
+            // and different from the DOM's Text nodes
+            var {
+              childElementCount: slateTextNodeCount
+            } = selectedBlock;
+
+            if (slateTextNodeCount === 1) {
+              focusNode = anchorNode;
+              focusOffset = focusNode.length;
+            } else if (slateTextNodeCount > 1) {
+              // A element with attribute data-slate-node="element" can have multiple
+              // children with attribute data-slate-node="text". But these children only have
+              // one child at each level.
+              // <span data-slate-node="text">
+              //   <span data-slate-leaf="">
+              //     <span data-slate-string=""></span>
+              //   </span>
+              // </span>
+              var focusElement = selectedBlock.lastElementChild;
+              var nodeIterator = document.createNodeIterator(focusElement, NodeFilter.SHOW_TEXT);
+              focusNode = nodeIterator.nextNode();
+              focusOffset = focusNode.length;
+            }
+          }
+        } // COMPAT: There's a bug in chrome that always returns `true` for
         // `isCollapsed` for a Selection that comes from a ShadowRoot.
         // (2020/08/08)
         // https://bugs.chromium.org/p/chromium/issues/detail?id=447523
+
 
         if (IS_CHROME && hasShadowRoot()) {
           isCollapsed = domRange.anchorNode === domRange.focusNode && domRange.anchorOffset === domRange.focusOffset;
@@ -2710,7 +2949,7 @@ function gatherMutationData(editor, mutations) {
           } // If we've already detected a diff at that path, we can return early
 
 
-          if (insertedText.some((_ref) => {
+          if (insertedText.some(_ref => {
             var {
               path
             } = _ref;
@@ -2819,6 +3058,9 @@ function restoreDOM(editor) {
   }
 }
 
+function ownKeys$1(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) { symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); } keys.push.apply(keys, symbols); } return keys; }
+
+function _objectSpread$1(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$1(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$1(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
 /**
  * Based loosely on:
  *
@@ -2897,13 +3139,31 @@ class AndroidInputManager {
 
     this.insertText = insertedText => {
       var {
-        selection
+        selection,
+        marks
       } = this.editor; // Insert the batched text diffs
 
       insertedText.forEach(insertion => {
-        Transforms.insertText(this.editor, insertion.text.insertText, {
-          at: normalizeTextInsertionRange(this.editor, selection, insertion)
-        });
+        var value = insertion.text.insertText;
+        var at = normalizeTextInsertionRange(this.editor, selection, insertion);
+
+        if (marks) {
+          var node = _objectSpread$1({
+            type: 'text',
+            value
+          }, marks);
+
+          Transforms.insertNodes(this.editor, node, {
+            match: Text$1.isText,
+            at,
+            select: true
+          });
+          this.editor.marks = null;
+        } else {
+          Transforms.insertText(this.editor, value, {
+            at
+          });
+        }
       });
     };
     /**
@@ -3067,9 +3327,11 @@ function useAndroidInputManager(node) {
   };
 }
 
-function ownKeys$1(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); keys.push.apply(keys, symbols); } return keys; }
+var _excluded$1 = ["autoFocus", "decorate", "onDOMBeforeInput", "placeholder", "readOnly", "renderElement", "renderLeaf", "renderPlaceholder", "style", "as"];
 
-function _objectSpread$1(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$1(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$1(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
+function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) { symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); } keys.push.apply(keys, symbols); } return keys; }
+
+function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
 /**
  * Editable.
  */
@@ -3087,7 +3349,7 @@ var AndroidEditable = props => {
     style = {},
     as: Component = 'div'
   } = props,
-      attributes = _objectWithoutProperties(props, ["autoFocus", "decorate", "onDOMBeforeInput", "placeholder", "readOnly", "renderElement", "renderLeaf", "renderPlaceholder", "style", "as"]);
+      attributes = _objectWithoutProperties(props, _excluded$1);
 
   var editor = useSlate();
   var ref = useRef(null);
@@ -3310,7 +3572,7 @@ var AndroidEditable = props => {
     contentEditable: readOnly ? undefined : true,
     suppressContentEditableWarning: true,
     ref: ref,
-    style: _objectSpread$1({
+    style: _objectSpread({
       // Allow positioning relative to the editable element.
       position: 'relative',
       // Prevent the default outline styles.
@@ -3400,7 +3662,9 @@ var AndroidEditable = props => {
       IS_FOCUSED.delete(editor);
     }, [readOnly, attributes.onBlur]),
     onPaste: useCallback(event => {
-      // This unfortunately needs to be handled with paste events instead.
+      // this will make application/x-slate-fragment exist when onPaste attributes is passed
+      event.clipboardData = getClipboardData(event.clipboardData); // This unfortunately needs to be handled with paste events instead.
+
       if (hasEditableTarget(editor, event.target) && !isEventHandled(event, attributes.onPaste) && !readOnly) {
         event.preventDefault();
         ReactEditor.insertData(editor, event.clipboardData);
@@ -3429,6 +3693,7 @@ var useFocused = () => {
   return useContext(FocusedContext);
 };
 
+var _excluded = ["editor", "children", "onChange", "value"];
 /**
  * A wrapper around the provider to handle `onChange` events, because the editor
  * is a mutable singleton so it won't ever register as "changed" otherwise.
@@ -3441,12 +3706,18 @@ var Slate = props => {
     onChange,
     value
   } = props,
-      rest = _objectWithoutProperties(props, ["editor", "children", "onChange", "value"]);
+      rest = _objectWithoutProperties(props, _excluded);
 
   var [key, setKey] = useState(0);
   var context = useMemo(() => {
-    invariant(Node.isNodeList(value), "[Slate] value is invalid! Expected a list of elements but got: ".concat(JSON.stringify(value)));
-    invariant(Editor.isEditor(editor), "[Slate] editor is invalid! you passed: ".concat(JSON.stringify(editor)));
+    if (!Node.isNodeList(value)) {
+      throw new Error("[Slate] value is invalid! Expected a list of elements" + "but got: ".concat(JSON.stringify(value)));
+    }
+
+    if (!Editor.isEditor(editor)) {
+      throw new Error("[Slate] editor is invalid! you passed:" + "".concat(JSON.stringify(editor)));
+    }
+
     editor.children = value;
     Object.assign(editor, rest);
     return [editor];
@@ -3570,7 +3841,10 @@ var withReact = editor => {
     apply,
     onChange,
     deleteBackward
-  } = e;
+  } = e; // The WeakMap which maps a key to a specific HTMLElement must be scoped to the editor instance to
+  // avoid collisions between editors in the DOM that share the same value.
+
+  EDITOR_TO_KEY_TO_ELEMENT.set(e, new WeakMap());
 
   e.deleteBackward = unit => {
     if (unit !== 'line') {
@@ -3598,6 +3872,33 @@ var withReact = editor => {
   };
 
   e.apply = op => {
+    // if we're NOT an insert_text and there's a queue
+    // of native events, bail out and flush the queue.
+    // otherwise transforms as part of this cycle will
+    // be incorrect.
+    //
+    // This is needed as overriden operations (e.g. `insertText`)
+    // can call additional transforms, which will need accurate
+    // content, and will be called _before_ `onInput` is fired.
+    if (op.type !== 'insert_text') {
+      AS_NATIVE.set(editor, false);
+      flushNativeEvents(editor);
+    } // If we're in native mode, queue the operation
+    // and it will be applied later.
+
+
+    if (AS_NATIVE.get(editor)) {
+      var nativeOps = NATIVE_OPERATIONS.get(editor);
+
+      if (nativeOps) {
+        nativeOps.push(op);
+      } else {
+        NATIVE_OPERATIONS.set(editor, [op]);
+      }
+
+      return;
+    }
+
     var matches = [];
 
     switch (op.type) {
@@ -3740,7 +4041,10 @@ var withReact = editor => {
   };
 
   e.insertData = data => {
-    var fragment = data.getData('application/x-slate-fragment');
+    /**
+     * Checking copied fragment from application/x-slate-fragment or data-slate-fragment
+     */
+    var fragment = data.getData('application/x-slate-fragment') || getSlateFragmentAttribute(data);
 
     if (fragment) {
       var decoded = decodeURIComponent(window.atob(fragment));
@@ -3788,7 +4092,7 @@ var withReact = editor => {
 };
 
 // Components
-var Editable$1 = IS_ANDROID ? AndroidEditable : Editable;
+var Editable = IS_ANDROID ? AndroidEditable : Editable$1;
 
-export { AndroidEditable, Editable as DefaultEditable, DefaultElement, DefaultLeaf, DefaultPlaceholder, Editable$1 as Editable, ReactEditor, Slate, useEditor, useFocused, useReadOnly, useSelected, useSlate, useSlateStatic, withReact };
+export { AndroidEditable, Editable$1 as DefaultEditable, DefaultElement, DefaultLeaf, DefaultPlaceholder, Editable, ReactEditor, Slate, useEditor, useFocused, useReadOnly, useSelected, useSlate, useSlateStatic, withReact };
 //# sourceMappingURL=index.es.js.map
