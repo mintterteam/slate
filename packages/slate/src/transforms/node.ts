@@ -393,8 +393,8 @@ export const NodeTransforms: NodeTransforms = {
       // Ensure that the nodes are equivalent, and figure out what the position
       // and extra properties of the merge will be.
       if (Text.isText(node) && Text.isText(prevNode)) {
-        const { text, ...rest } = node
-        position = prevNode.text.length
+        const { value, ...rest } = node
+        position = prevNode.value.length
         properties = rest as Partial<Text>
       } else if (Element.isElement(node) && Element.isElement(prevNode)) {
         const { children, ...rest } = node
@@ -428,7 +428,7 @@ export const NodeTransforms: NodeTransforms = {
       if (
         (Element.isElement(prevNode) && Editor.isEmpty(editor, prevNode)) ||
         (Text.isText(prevNode) &&
-          prevNode.text === '' &&
+          prevNode.value === '' &&
           prevPath[prevPath.length - 1] !== 0)
       ) {
         Transforms.removeNodes(editor, { at: prevPath, voids })
@@ -596,7 +596,7 @@ export const NodeTransforms: NodeTransforms = {
       if (split && Range.isRange(at)) {
         if (
           Range.isCollapsed(at) &&
-          Editor.leaf(editor, at.anchor)[0].text.length > 0
+          Editor.leaf(editor, at.anchor)[0].value.length > 0
         ) {
           // If the range is collapsed in a non-empty node and 'split' is true, there's nothing to
           // set that won't get normalized away
@@ -732,9 +732,9 @@ export const NodeTransforms: NodeTransforms = {
           let after = Editor.after(editor, voidPath)
 
           if (!after) {
-            const text = { text: '' }
+            const value = { value: '' }
             const afterPath = Path.next(voidPath)
-            Transforms.insertNodes(editor, text, { at: afterPath, voids })
+            Transforms.insertNodes(editor, value, { at: afterPath, voids })
             after = Editor.point(editor, afterPath)!
           }
 

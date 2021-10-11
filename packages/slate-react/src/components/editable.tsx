@@ -743,9 +743,9 @@ export const Editable = (props: EditableProps) => {
                     state.hasInsertPrefixInCompositon = false
                     Editor.withoutNormalizing(editor, () => {
                       // remove Unicode BOM prefix added in `onCompositionStart`
-                      const text = currentTextNode.text.replace(/^\uFEFF/, '')
+                      const text = currentTextNode.value.replace(/^\uFEFF/, '')
                       Transforms.delete(editor, {
-                        distance: currentTextNode.text.length,
+                        distance: currentTextNode.value.length,
                         reverse: true,
                       })
                       Transforms.insertText(editor, text)
@@ -802,7 +802,7 @@ export const Editable = (props: EditableProps) => {
                     Transforms.insertNodes(
                       editor,
                       {
-                        text: '\uFEFF',
+                        value: '\uFEFF',
                         ...marks,
                       },
                       {

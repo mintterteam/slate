@@ -181,7 +181,7 @@ export const TextTransforms: TextTransforms = {
         const [node] = Editor.leaf(editor, point)
         const { path } = point
         const { offset } = start
-        const text = node.text.slice(offset)
+        const text = node.value.slice(offset)
         if (text.length > 0)
           editor.apply({ type: 'remove_text', path, offset, text })
       }
@@ -196,7 +196,7 @@ export const TextTransforms: TextTransforms = {
         const [node] = Editor.leaf(editor, point)
         const { path } = point
         const offset = isSingleText ? start.offset : 0
-        const text = node.text.slice(offset, end.offset)
+        const text = node.value.slice(offset, end.offset)
         if (text.length > 0)
           editor.apply({ type: 'remove_text', path, offset, text })
       }
