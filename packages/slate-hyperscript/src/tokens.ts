@@ -65,7 +65,7 @@ export class FocusToken extends Token {
  */
 
 export const addAnchorToken = (text: Text, token: AnchorToken) => {
-  const offset = text.text.length
+  const offset = text.value.length
   ANCHOR.set(text, [offset, token])
 }
 
@@ -84,7 +84,7 @@ export const getAnchorOffset = (
  */
 
 export const addFocusToken = (text: Text, token: FocusToken) => {
-  const offset = text.text.length
+  const offset = text.value.length
   FOCUS.set(text, [offset, token])
 }
 
