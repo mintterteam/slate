@@ -4331,7 +4331,7 @@ var Text = {
    * Check if a value implements the `Text` interface.
    */
   isText: function isText(value) {
-    return isPlainObject.isPlainObject(value) && typeof value.text === 'string';
+    return isPlainObject.isPlainObject(value) && typeof value.value === 'string';
   },
 
   /**
