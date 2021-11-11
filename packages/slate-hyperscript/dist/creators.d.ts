@@ -45,7 +45,7 @@ export declare function createText(tagName: string, attributes: {
 /**
  * Create a top-level `Editor` object.
  */
-export declare function createEditor(tagName: string, attributes: {
+export declare const createEditor: (makeEditor: () => Editor) => (tagName: string, attributes: {
     [key: string]: any;
-}, children: any[]): Editor;
+}, children: any[]) => Editor;
 //# sourceMappingURL=creators.d.ts.map

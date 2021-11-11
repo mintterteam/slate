@@ -258,10 +258,10 @@ var TextString = function TextString(props) {
       _props$isTrailing = props.isTrailing,
       isTrailing = _props$isTrailing === void 0 ? false : _props$isTrailing;
   var ref = React.useRef(null);
-  var forceUpdateFlag = React.useRef(false);
+  var forceUpdateCount = React.useRef(0);
 
   if (ref.current && ref.current.textContent !== text) {
-    forceUpdateFlag.current = !forceUpdateFlag.current;
+    forceUpdateCount.current += 1;
   } // This component may have skipped rendering due to native operations being
   // applied. If an undo is performed React will see the old and new shadow DOM
   // match and not apply an update. Forces each render to actually reconcile.
@@ -270,7 +270,7 @@ var TextString = function TextString(props) {
   return /*#__PURE__*/React__default['default'].createElement("span", {
     "data-slate-string": true,
     ref: ref,
-    key: forceUpdateFlag.current ? 'A' : 'B'
+    key: forceUpdateCount.current
   }, text, isTrailing ? '\n' : null);
 };
 /**
@@ -697,11 +697,11 @@ var useSelected = function useSelected() {
   return React.useContext(SelectedContext);
 };
 
-function _createForOfIteratorHelper$2(o, allowArrayLike) { var it = typeof Symbol !== "undefined" && o[Symbol.iterator] || o["@@iterator"]; if (!it) { if (Array.isArray(o) || (it = _unsupportedIterableToArray$2(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = it.call(o); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
+function _createForOfIteratorHelper$3(o, allowArrayLike) { var it = typeof Symbol !== "undefined" && o[Symbol.iterator] || o["@@iterator"]; if (!it) { if (Array.isArray(o) || (it = _unsupportedIterableToArray$3(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = it.call(o); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
 
-function _unsupportedIterableToArray$2(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray$2(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray$2(o, minLen); }
+function _unsupportedIterableToArray$3(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray$3(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray$3(o, minLen); }
 
-function _arrayLikeToArray$2(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
+function _arrayLikeToArray$3(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
 /**
  * Children.
  */
@@ -727,7 +727,7 @@ var useChildren = function useChildren(props) {
     var sel = selection && slate.Range.intersection(range, selection);
     var ds = decorate([n, p]);
 
-    var _iterator = _createForOfIteratorHelper$2(decorations),
+    var _iterator = _createForOfIteratorHelper$3(decorations),
         _step;
 
     try {
@@ -1113,42 +1113,13 @@ var getClipboardData = function getClipboardData(dataTransfer) {
   return dataTransfer;
 };
 
-var AS_NATIVE = new WeakMap();
-var NATIVE_OPERATIONS = new WeakMap();
-/**
- * `asNative` queues operations as native, meaning native browser events will
- * not have been prevented, and we need to flush the operations
- * after the native events have propogated to the DOM.
- * @param {Editor} editor - Editor on which the operations are being applied
- * @param {callback} fn - Function containing .exec calls which will be queued as native
- */
-
-var asNative = function asNative(editor, fn) {
-  AS_NATIVE.set(editor, true);
-  fn();
-  AS_NATIVE.set(editor, false);
-};
-/**
- * `flushNativeEvents` applies any queued native events.
- * @param {Editor} editor - Editor on which the operations are being applied
- */
-
-var flushNativeEvents = function flushNativeEvents(editor) {
-  var nativeOps = NATIVE_OPERATIONS.get(editor); // Clear list _before_ applying, as we might flush
-  // events in each op, as well.
-
-  NATIVE_OPERATIONS.set(editor, []);
-
-  if (nativeOps) {
-    slate.Editor.withoutNormalizing(editor, function () {
-      nativeOps.forEach(function (op) {
-        editor.apply(op);
-      });
-    });
-  }
-};
-
 var _excluded$2 = ["autoFocus", "decorate", "onDOMBeforeInput", "placeholder", "readOnly", "renderElement", "renderLeaf", "renderPlaceholder", "scrollSelectionIntoView", "style", "as"];
+
+function _createForOfIteratorHelper$2(o, allowArrayLike) { var it = typeof Symbol !== "undefined" && o[Symbol.iterator] || o["@@iterator"]; if (!it) { if (Array.isArray(o) || (it = _unsupportedIterableToArray$2(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = it.call(o); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
+
+function _unsupportedIterableToArray$2(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray$2(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray$2(o, minLen); }
+
+function _arrayLikeToArray$2(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
 
 function ownKeys$2(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) { symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); } keys.push.apply(keys, symbols); } return keys; }
 
@@ -1191,7 +1162,8 @@ var Editable$1 = function Editable(props) {
       isComposing = _useState2[0],
       setIsComposing = _useState2[1];
 
-  var ref = React.useRef(null); // Update internal state on each render.
+  var ref = React.useRef(null);
+  var deferredOperations = React.useRef([]); // Update internal state on each render.
 
   IS_READ_ONLY.set(editor, readOnly); // Keep track of some state for the event handler logic.
 
@@ -1244,7 +1216,10 @@ var Editable$1 = function Editable(props) {
 
     if (hasDomSelection && hasDomSelectionInEditor && selection) {
       var slateRange = ReactEditor.toSlateRange(editor, domSelection, {
-        exactMatch: true
+        exactMatch: true,
+        // domSelection is not necessarily a valid Slate range
+        // (e.g. when clicking on contentEditable:false element)
+        suppressThrow: true
       });
 
       if (slateRange && slate.Range.equals(slateRange, selection)) {
@@ -1258,7 +1233,8 @@ var Editable$1 = function Editable(props) {
 
     if (selection && !ReactEditor.hasRange(editor, selection)) {
       editor.selection = ReactEditor.toSlateRange(editor, domSelection, {
-        exactMatch: false
+        exactMatch: false,
+        suppressThrow: false
       });
       return;
     } // Otherwise the DOM selection is out of sync, so update it.
@@ -1317,7 +1293,7 @@ var Editable$1 = function Editable(props) {
       if (type === 'insertText' && selection && slate.Range.isCollapsed(selection) && // Only use native character insertion for single characters a-z or space for now.
       // Long-press events (hold a + press 4 = ä) to choose a special character otherwise
       // causes duplicate inserts.
-      event.data && event.data.length === 1 && /[a-z ]/i.test(event.data) && // Chrome seems to have issues correctly editing the start of nodes.
+      event.data && event.data.length === 1 && /[a-z ]/i.test(event.data) && // Chrome has issues correctly editing the start of nodes: https://bugs.chromium.org/p/chromium/issues/detail?id=1249405
       // When there is an inline element, e.g. a link, and you select
       // right after it (the start of the next node).
       selection.anchor.offset !== 0) {
@@ -1326,7 +1302,8 @@ var Editable$1 = function Editable(props) {
 
         if (editor.marks) {
           _native = false;
-        } // and because of the selection moving in `insertText` (create-editor.ts).
+        } // Chrome also has issues correctly editing the end of nodes: https://bugs.chromium.org/p/chromium/issues/detail?id=1259100
+        // Therefore we don't allow native events to insert text at the end of nodes.
 
 
         var anchor = selection.anchor;
@@ -1362,7 +1339,8 @@ var Editable$1 = function Editable(props) {
 
         if (targetRange) {
           var range = ReactEditor.toSlateRange(editor, targetRange, {
-            exactMatch: false
+            exactMatch: false,
+            suppressThrow: false
           });
 
           if (!selection || !slate.Range.equals(selection, range)) {
@@ -1494,7 +1472,7 @@ var Editable$1 = function Editable(props) {
               // Only insertText operations use the native functionality, for now.
               // Potentially expand to single character deletes, as well.
               if (_native) {
-                asNative(editor, function () {
+                deferredOperations.current.push(function () {
                   return slate.Editor.insertText(editor, data);
                 });
               } else {
@@ -1530,7 +1508,7 @@ var Editable$1 = function Editable(props) {
   // while a selection is being dragged.
 
   var onDOMSelectionChange = React.useCallback(throttle__default['default'](function () {
-    if (!readOnly && !state.isComposing && !state.isUpdatingSelection && !state.isDraggingInternally) {
+    if (!state.isComposing && !state.isUpdatingSelection && !state.isDraggingInternally) {
       var root = ReactEditor.findDocumentOrShadowRoot(editor);
       var activeElement = root.activeElement;
       var el = ReactEditor.toDOMNode(editor, editor);
@@ -1554,11 +1532,10 @@ var Editable$1 = function Editable(props) {
 
       if (anchorNodeSelectable && focusNodeSelectable) {
         var range = ReactEditor.toSlateRange(editor, domSelection, {
-          exactMatch: false
+          exactMatch: false,
+          suppressThrow: false
         });
         slate.Transforms.select(editor, range);
-      } else {
-        slate.Transforms.deselect(editor);
       }
     }
   }, 100), [readOnly]);
@@ -1604,7 +1581,12 @@ var Editable$1 = function Editable(props) {
     autoCapitalize: !HAS_BEFORE_INPUT_SUPPORT ? 'false' : attributes.autoCapitalize,
     "data-slate-editor": true,
     "data-slate-node": "value",
-    contentEditable: readOnly ? undefined : true,
+    // explicitly set this
+    contentEditable: !readOnly,
+    // in some cases, a decoration needs access to the range / selection to decorate a text node,
+    // then you will select the whole text node when you select part the of text
+    // this magic zIndex="-1" will fix it
+    zindex: -1,
     suppressContentEditableWarning: true,
     ref: ref,
     style: _objectSpread$2({
@@ -1635,7 +1617,21 @@ var Editable$1 = function Editable(props) {
       // and we can correctly compare DOM text values in components
       // to stop rendering, so that browser functions like autocorrect
       // and spellcheck work as expected.
-      flushNativeEvents(editor);
+      var _iterator = _createForOfIteratorHelper$2(deferredOperations.current),
+          _step;
+
+      try {
+        for (_iterator.s(); !(_step = _iterator.n()).done;) {
+          var op = _step.value;
+          op();
+        }
+      } catch (err) {
+        _iterator.e(err);
+      } finally {
+        _iterator.f();
+      }
+
+      deferredOperations.current = [];
     }, []),
     onBlur: React.useCallback(function (event) {
       if (readOnly || state.isUpdatingSelection || !hasEditableTarget(editor, event.target) || isEventHandled(event, attributes.onBlur)) {
@@ -1691,21 +1687,30 @@ var Editable$1 = function Editable(props) {
     onClick: React.useCallback(function (event) {
       if (!readOnly && hasTarget(editor, event.target) && !isEventHandled(event, attributes.onClick) && isDOMNode(event.target)) {
         var node = ReactEditor.toSlateNode(editor, event.target);
-        var path = ReactEditor.findPath(editor, node);
+        var path = ReactEditor.findPath(editor, node); // At this time, the Slate document may be arbitrarily different,
+        // because onClick handlers can change the document before we get here.
+        // Therefore we must check that this path actually exists,
+        // and that it still refers to the same node.
 
-        var _start = slate.Editor.start(editor, path);
+        if (slate.Editor.hasPath(editor, path)) {
+          var lookupNode = slate.Node.get(editor, path);
 
-        var end = slate.Editor.end(editor, path);
-        var startVoid = slate.Editor["void"](editor, {
-          at: _start
-        });
-        var endVoid = slate.Editor["void"](editor, {
-          at: end
-        });
+          if (lookupNode === node) {
+            var _start = slate.Editor.start(editor, path);
 
-        if (startVoid && endVoid && slate.Path.equals(startVoid[1], endVoid[1])) {
-          var range = slate.Editor.range(editor, _start);
-          slate.Transforms.select(editor, range);
+            var end = slate.Editor.end(editor, path);
+            var startVoid = slate.Editor["void"](editor, {
+              at: _start
+            });
+            var endVoid = slate.Editor["void"](editor, {
+              at: end
+            });
+
+            if (startVoid && endVoid && slate.Path.equals(startVoid[1], endVoid[1])) {
+              var range = slate.Editor.range(editor, _start);
+              slate.Transforms.select(editor, range);
+            }
+          }
         }
       }
     }, [readOnly, attributes.onClick]),
@@ -1829,7 +1834,7 @@ var Editable$1 = function Editable(props) {
       }
     }, [attributes.onDragOver]),
     onDragStart: React.useCallback(function (event) {
-      if (hasTarget(editor, event.target) && !isEventHandled(event, attributes.onDragStart)) {
+      if (!readOnly && hasTarget(editor, event.target) && !isEventHandled(event, attributes.onDragStart)) {
         var node = ReactEditor.toSlateNode(editor, event.target);
         var path = ReactEditor.findPath(editor, node);
         var voidMatch = slate.Editor.isVoid(editor, node) || slate.Editor["void"](editor, {
@@ -1858,7 +1863,10 @@ var Editable$1 = function Editable(props) {
         slate.Transforms.select(editor, range);
 
         if (state.isDraggingInternally) {
-          if (draggedRange) {
+          if (draggedRange && !slate.Range.equals(draggedRange, range) && !slate.Editor["void"](editor, {
+            at: range,
+            voids: true
+          })) {
             slate.Transforms["delete"](editor, {
               at: draggedRange
             });
@@ -2157,7 +2165,7 @@ var Editable$1 = function Editable(props) {
 
               if (slate.Element.isElement(currentNode) && slate.Editor.isVoid(editor, currentNode) && slate.Editor.isInline(editor, currentNode)) {
                 event.preventDefault();
-                slate.Transforms["delete"](editor, {
+                slate.Editor.deleteBackward(editor, {
                   unit: 'block'
                 });
                 return;
@@ -2509,7 +2517,9 @@ var ReactEditor = {
       return false;
     }
 
-    return targetEl.closest("[data-slate-editor]") === editorEl && (!editable || targetEl.isContentEditable || !!targetEl.getAttribute('data-slate-zero-width'));
+    return targetEl.closest("[data-slate-editor]") === editorEl && (!editable || targetEl.isContentEditable ? true : typeof targetEl.isContentEditable === 'boolean' && // isContentEditable exists only on HTMLElement, and on other nodes it will be undefined
+    // this is the core logic that lets you know you got the right editor.selection instead of null when editor is contenteditable="false"(readOnly)
+    targetEl.closest('[contenteditable="false"]') === editorEl || !!targetEl.getAttribute('data-slate-zero-width'));
   },
 
   /**
@@ -2517,6 +2527,20 @@ var ReactEditor = {
    */
   insertData: function insertData(editor, data) {
     editor.insertData(data);
+  },
+
+  /**
+   * Insert fragment data from a `DataTransfer` into the editor.
+   */
+  insertFragmentData: function insertFragmentData(editor, data) {
+    return editor.insertFragmentData(data);
+  },
+
+  /**
+   * Insert text data from a `DataTransfer` into the editor.
+   */
+  insertTextData: function insertTextData(editor, data) {
+    return editor.insertTextData(data);
   },
 
   /**
@@ -2694,8 +2718,10 @@ var ReactEditor = {
 
 
     var domRange;
-    var _window = window,
-        document = _window.document; // COMPAT: In Firefox, `caretRangeFromPoint` doesn't exist. (2016/07/25)
+
+    var _ReactEditor$getWindo = ReactEditor.getWindow(editor),
+        document = _ReactEditor$getWindo.document; // COMPAT: In Firefox, `caretRangeFromPoint` doesn't exist. (2016/07/25)
+
 
     if (document.caretRangeFromPoint) {
       domRange = document.caretRangeFromPoint(x, y);
@@ -2715,7 +2741,8 @@ var ReactEditor = {
 
 
     var range = ReactEditor.toSlateRange(editor, domRange, {
-      exactMatch: false
+      exactMatch: false,
+      suppressThrow: false
     });
     return range;
   },
@@ -2723,7 +2750,10 @@ var ReactEditor = {
   /**
    * Find a Slate point from a DOM selection's `domNode` and `domOffset`.
    */
-  toSlatePoint: function toSlatePoint(editor, domPoint, exactMatch) {
+  toSlatePoint: function toSlatePoint(editor, domPoint, options) {
+    var exactMatch = options.exactMatch,
+        suppressThrow = options.suppressThrow;
+
     var _ref5 = exactMatch ? domPoint : normalizeDOMPoint(domPoint),
         _ref6 = _slicedToArray(_ref5, 2),
         nearestNode = _ref6[0],
@@ -2734,6 +2764,8 @@ var ReactEditor = {
     var offset = 0;
 
     if (parentNode) {
+      var _domNode$textContent;
+
       var voidNode = parentNode.closest('[data-slate-void="true"]');
       var leafNode = parentNode.closest('[data-slate-leaf]');
       var domNode = null; // Calculate how far into the text node the `nearestNode` is, so that we
@@ -2741,11 +2773,8 @@ var ReactEditor = {
 
       if (leafNode) {
         textNode = leafNode.closest('[data-slate-node="text"]');
-
-        var _window2 = ReactEditor.getWindow(editor);
-
-        var range = _window2.document.createRange();
-
+        var window = ReactEditor.getWindow(editor);
+        var range = window.document.createRange();
         range.setStart(textNode, 0);
         range.setEnd(nearestNode, nearestOffset);
         var contents = range.cloneContents();
@@ -2775,20 +2804,15 @@ var ReactEditor = {
             offset -= el.textContent.length;
           });
         }
-      } // COMPAT: If the parent node is a Slate zero-width space, editor is
-      // because the text node should have no characters. However, during IME
-      // composition the ASCII characters will be prepended to the zero-width
-      // space, so subtract 1 from the offset to account for the zero-width
-      // space character.
+      }
 
-
-      if (domNode && offset === domNode.textContent.length && parentNode.hasAttribute('data-slate-zero-width')) {
+      if (domNode && offset === domNode.textContent.length && (parentNode.hasAttribute('data-slate-zero-width') || IS_FIREFOX && (_domNode$textContent = domNode.textContent) !== null && _domNode$textContent !== void 0 && _domNode$textContent.endsWith('\n\n'))) {
         offset--;
       }
     }
 
     if (!textNode) {
-      if (exactMatch) {
+      if (suppressThrow) {
         return null;
       }
 
@@ -2810,7 +2834,8 @@ var ReactEditor = {
    * Find a Slate range from a DOM range or selection.
    */
   toSlateRange: function toSlateRange(editor, domRange, options) {
-    var exactMatch = options.exactMatch;
+    var exactMatch = options.exactMatch,
+        suppressThrow = options.suppressThrow;
     var el = isDOMSelection(domRange) ? domRange.anchorNode : domRange.startContainer;
     var anchorNode;
     var anchorOffset;
@@ -2823,58 +2848,10 @@ var ReactEditor = {
         anchorNode = domRange.anchorNode;
         anchorOffset = domRange.anchorOffset;
         focusNode = domRange.focusNode;
-        focusOffset = domRange.focusOffset; // When triple clicking a block, Chrome will return a selection object whose
-        // focus node is the next element sibling and focusOffset is 0.
-        // This will highlight the corresponding toolbar button for the sibling
-        // block even though users just want to target the previous block.
-        // (2021/08/24)
-        // Signs of a triple click in Chrome
-        // - anchor node will be a text node but focus node won't
-        // - both anchorOffset and focusOffset are 0
-        // - focusNode value will be null since Chrome tries to extend to just the
-        // beginning of the next block
-
-        if (IS_CHROME && anchorNode && focusNode && anchorNode.nodeType !== focusNode.nodeType && domRange.anchorOffset === 0 && domRange.focusOffset === 0 && focusNode.nodeValue == null) {
-          // If an anchorNode is an element node when triple clicked, then the focusNode
-          //  should also be the same as anchorNode when triple clicked.
-          // Otherwise, anchorNode is a text node and we need to
-          // - climb up the DOM tree to get the farthest element node that receives
-          //   triple click. It should have atribute 'data-slate-node' = "element"
-          // - get the last child of that element node
-          // - climb down the DOM tree to get the text node of the last child
-          // - this is also the end of the selection aka the focusNode
-          var anchorElement = anchorNode.parentNode;
-          var selectedBlock = anchorElement.closest('[data-slate-node="element"]');
-
-          if (selectedBlock) {
-            // The Slate Text nodes are leaf-level and contains document's text.
-            // However, when represented in the DOM, they are actually Element nodes
-            // and different from the DOM's Text nodes
-            var slateTextNodeCount = selectedBlock.childElementCount;
-
-            if (slateTextNodeCount === 1) {
-              focusNode = anchorNode;
-              focusOffset = focusNode.length;
-            } else if (slateTextNodeCount > 1) {
-              // A element with attribute data-slate-node="element" can have multiple
-              // children with attribute data-slate-node="text". But these children only have
-              // one child at each level.
-              // <span data-slate-node="text">
-              //   <span data-slate-leaf="">
-              //     <span data-slate-string=""></span>
-              //   </span>
-              // </span>
-              var focusElement = selectedBlock.lastElementChild;
-              var nodeIterator = document.createNodeIterator(focusElement, NodeFilter.SHOW_TEXT);
-              focusNode = nodeIterator.nextNode();
-              focusOffset = focusNode.length;
-            }
-          }
-        } // COMPAT: There's a bug in chrome that always returns `true` for
+        focusOffset = domRange.focusOffset; // COMPAT: There's a bug in chrome that always returns `true` for
         // `isCollapsed` for a Selection that comes from a ShadowRoot.
         // (2020/08/08)
         // https://bugs.chromium.org/p/chromium/issues/detail?id=447523
-
 
         if (IS_CHROME && hasShadowRoot()) {
           isCollapsed = domRange.anchorNode === domRange.focusNode && domRange.anchorOffset === domRange.focusOffset;
@@ -2894,22 +2871,42 @@ var ReactEditor = {
       throw new Error("Cannot resolve a Slate range from DOM range: ".concat(domRange));
     }
 
-    var anchor = ReactEditor.toSlatePoint(editor, [anchorNode, anchorOffset], exactMatch);
+    var anchor = ReactEditor.toSlatePoint(editor, [anchorNode, anchorOffset], {
+      exactMatch: exactMatch,
+      suppressThrow: suppressThrow
+    });
 
     if (!anchor) {
       return null;
     }
 
-    var focus = isCollapsed ? anchor : ReactEditor.toSlatePoint(editor, [focusNode, focusOffset], exactMatch);
+    var focus = isCollapsed ? anchor : ReactEditor.toSlatePoint(editor, [focusNode, focusOffset], {
+      exactMatch: exactMatch,
+      suppressThrow: suppressThrow
+    });
 
     if (!focus) {
       return null;
     }
 
-    return {
+    var range = {
       anchor: anchor,
       focus: focus
-    };
+    }; // if the selection is a hanging range that ends in a void
+    // and the DOM focus is an Element
+    // (meaning that the selection ends before the element)
+    // unhang the range to avoid mistakenly including the void
+
+    if (slate.Range.isExpanded(range) && slate.Range.isForward(range) && isDOMElement(focusNode) && slate.Editor["void"](editor, {
+      at: range.focus,
+      mode: 'highest'
+    })) {
+      range = slate.Editor.unhangRange(editor, range, {
+        voids: true
+      });
+    }
+
+    return range;
   },
   hasRange: function hasRange(editor, range) {
     var anchor = range.anchor,
@@ -3662,7 +3659,8 @@ var AndroidEditable = function AndroidEditable(props) {
 
       if (hasDomSelection && hasDomSelectionInEditor && selection) {
         var slateRange = ReactEditor.toSlateRange(editor, domSelection, {
-          exactMatch: true
+          exactMatch: true,
+          suppressThrow: true
         });
 
         if (slateRange && slate.Range.equals(slateRange, selection)) {
@@ -3676,7 +3674,8 @@ var AndroidEditable = function AndroidEditable(props) {
 
       if (selection && !ReactEditor.hasRange(editor, selection)) {
         editor.selection = ReactEditor.toSlateRange(editor, domSelection, {
-          exactMatch: false
+          exactMatch: false,
+          suppressThrow: false
         });
         return;
       } // Otherwise the DOM selection is out of sync, so update it.
@@ -3748,7 +3747,7 @@ var AndroidEditable = function AndroidEditable(props) {
 
   var onDOMSelectionChange = React.useCallback(throttle__default['default'](function () {
     try {
-      if (!readOnly && !state.isUpdatingSelection && !inputManager.isReconciling.current) {
+      if (!state.isUpdatingSelection && !inputManager.isReconciling.current) {
         var root = ReactEditor.findDocumentOrShadowRoot(editor);
         var activeElement = root.activeElement;
         var el = ReactEditor.toDOMNode(editor, editor);
@@ -3772,7 +3771,8 @@ var AndroidEditable = function AndroidEditable(props) {
 
         if (anchorNodeSelectable && focusNodeSelectable) {
           var range = ReactEditor.toSlateRange(editor, domSelection, {
-            exactMatch: false
+            exactMatch: false,
+            suppressThrow: false
           });
           slate.Transforms.select(editor, range);
         } else {
@@ -3949,12 +3949,7 @@ var Slate = function Slate(props) {
       value = props.value,
       rest = _objectWithoutProperties(props, _excluded);
 
-  var _useState = React.useState(0),
-      _useState2 = _slicedToArray(_useState, 2),
-      key = _useState2[0],
-      setKey = _useState2[1];
-
-  var context = React.useMemo(function () {
+  var _React$useState = React__default['default'].useState(function () {
     if (!slate.Node.isNodeList(value)) {
       throw new Error("[Slate] value is invalid! Expected a list of elements" + "but got: ".concat(JSON.stringify(value)));
     }
@@ -3966,11 +3961,15 @@ var Slate = function Slate(props) {
     editor.children = value;
     Object.assign(editor, rest);
     return [editor];
-  }, [key, value].concat(_toConsumableArray(Object.values(rest))));
+  }),
+      _React$useState2 = _slicedToArray(_React$useState, 2),
+      context = _React$useState2[0],
+      setContext = _React$useState2[1];
+
   var onContextChange = React.useCallback(function () {
     onChange(editor.children);
-    setKey(key + 1);
-  }, [key, onChange]);
+    setContext([editor]);
+  }, [onChange]);
   EDITOR_TO_ON_CHANGE.set(editor, onContextChange);
   React.useEffect(function () {
     return function () {
@@ -3978,10 +3977,10 @@ var Slate = function Slate(props) {
     };
   }, []);
 
-  var _useState3 = React.useState(ReactEditor.isFocused(editor)),
-      _useState4 = _slicedToArray(_useState3, 2),
-      isFocused = _useState4[0],
-      setIsFocused = _useState4[1];
+  var _useState = React.useState(ReactEditor.isFocused(editor)),
+      _useState2 = _slicedToArray(_useState, 2),
+      isFocused = _useState2[0],
+      setIsFocused = _useState2[1];
 
   React.useEffect(function () {
     setIsFocused(ReactEditor.isFocused(editor));
@@ -4137,33 +4136,6 @@ var withReact = function withReact(editor) {
   };
 
   e.apply = function (op) {
-    // if we're NOT an insert_text and there's a queue
-    // of native events, bail out and flush the queue.
-    // otherwise transforms as part of this cycle will
-    // be incorrect.
-    //
-    // This is needed as overriden operations (e.g. `insertText`)
-    // can call additional transforms, which will need accurate
-    // content, and will be called _before_ `onInput` is fired.
-    if (op.type !== 'insert_text') {
-      AS_NATIVE.set(editor, false);
-      flushNativeEvents(editor);
-    } // If we're in native mode, queue the operation
-    // and it will be applied later.
-
-
-    if (AS_NATIVE.get(editor)) {
-      var nativeOps = NATIVE_OPERATIONS.get(editor);
-
-      if (nativeOps) {
-        nativeOps.push(op);
-      } else {
-        NATIVE_OPERATIONS.set(editor, [op]);
-      }
-
-      return;
-    }
-
     var matches = [];
 
     switch (op.type) {
@@ -4356,6 +4328,12 @@ var withReact = function withReact(editor) {
   };
 
   e.insertData = function (data) {
+    if (!e.insertFragmentData(data)) {
+      e.insertTextData(data);
+    }
+  };
+
+  e.insertFragmentData = function (data) {
     /**
      * Checking copied fragment from application/x-slate-fragment or data-slate-fragment
      */
@@ -4365,9 +4343,13 @@ var withReact = function withReact(editor) {
       var decoded = decodeURIComponent(window.atob(fragment));
       var parsed = JSON.parse(decoded);
       e.insertFragment(parsed);
-      return;
+      return true;
     }
 
+    return false;
+  };
+
+  e.insertTextData = function (data) {
     var text = data.getData('text/plain');
 
     if (text) {
@@ -4395,7 +4377,11 @@ var withReact = function withReact(editor) {
       } finally {
         _iterator4.f();
       }
+
+      return true;
     }
+
+    return false;
   };
 
   e.onChange = function () {

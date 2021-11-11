@@ -6,6 +6,8 @@ import { DOMNode, DOMPoint, DOMRange, DOMSelection, DOMStaticRange } from '../ut
  */
 export interface ReactEditor extends BaseEditor {
     insertData: (data: DataTransfer) => void;
+    insertFragmentData: (data: DataTransfer) => boolean;
+    insertTextData: (data: DataTransfer) => boolean;
     setFragmentData: (data: DataTransfer) => void;
     hasRange: (editor: ReactEditor, range: Range) => boolean;
 }
@@ -57,6 +59,14 @@ export declare const ReactEditor: {
      */
     insertData(editor: ReactEditor, data: DataTransfer): void;
     /**
+     * Insert fragment data from a `DataTransfer` into the editor.
+     */
+    insertFragmentData(editor: ReactEditor, data: DataTransfer): boolean;
+    /**
+     * Insert text data from a `DataTransfer` into the editor.
+     */
+    insertTextData(editor: ReactEditor, data: DataTransfer): boolean;
+    /**
      * Sets data from the currently selected fragment on a `DataTransfer`.
      */
     setFragmentData(editor: ReactEditor, data: DataTransfer): void;
@@ -88,12 +98,16 @@ export declare const ReactEditor: {
     /**
      * Find a Slate point from a DOM selection's `domNode` and `domOffset`.
      */
-    toSlatePoint<T extends boolean>(editor: ReactEditor, domPoint: DOMPoint, exactMatch: T): T extends true ? import("slate").BasePoint | null : import("slate").BasePoint;
+    toSlatePoint<T extends boolean>(editor: ReactEditor, domPoint: DOMPoint, options: {
+        exactMatch: T;
+        suppressThrow: T;
+    }): T extends true ? import("slate").BasePoint | null : import("slate").BasePoint;
     /**
      * Find a Slate range from a DOM range or selection.
      */
     toSlateRange<T_1 extends boolean>(editor: ReactEditor, domRange: DOMRange | DOMStaticRange | DOMSelection, options: {
         exactMatch: T_1;
+        suppressThrow: T_1;
     }): T_1 extends true ? import("slate").BaseSelection : import("slate").BaseRange & {
         placeholder?: string | undefined;
     };

@@ -395,30 +395,6 @@ var createEditor = function createEditor() {
           marks = editor.marks;
 
       if (selection) {
-        // If the cursor is at the end of an inline, move it outside of
-        // the inline before inserting
-        if (Range.isCollapsed(selection)) {
-          var inline = Editor.above(editor, {
-            match: function match(n) {
-              return Editor.isInline(editor, n);
-            },
-            mode: 'highest'
-          });
-
-          if (inline) {
-            var _inline = _slicedToArray(inline, 2),
-                inlinePath = _inline[1];
-
-            if (Editor.isEnd(editor, selection.anchor, inlinePath)) {
-              var point = Editor.after(editor, inlinePath);
-              Transforms.setSelection(editor, {
-                anchor: point,
-                focus: point
-              });
-            }
-          }
-        }
-
         if (marks) {
           var node = _objectSpread$9({
             value: value
@@ -4187,12 +4163,17 @@ var Range = {
       var affinityFocus;
 
       if (affinity === 'inward') {
+        // If the range is collapsed, make sure to use the same affinity to
+        // avoid the two points passing each other and expanding in the opposite
+        // direction
+        var isCollapsed = Range.isCollapsed(r);
+
         if (Range.isForward(r)) {
           affinityAnchor = 'forward';
-          affinityFocus = 'backward';
+          affinityFocus = isCollapsed ? affinityAnchor : 'backward';
         } else {
           affinityAnchor = 'backward';
-          affinityFocus = 'forward';
+          affinityFocus = isCollapsed ? affinityAnchor : 'forward';
         }
       } else if (affinity === 'outward') {
         if (Range.isForward(r)) {
@@ -5544,6 +5525,12 @@ var NodeTransforms = {
       }
 
       if (split && Range.isRange(at)) {
+        if (Range.isCollapsed(at) && Editor.leaf(editor, at.anchor)[0].text.length > 0) {
+          // If the range is collapsed in a non-empty node and 'split' is true, there's nothing to
+          // set that won't get normalized away
+          return;
+        }
+
         var rangeRef = Editor.rangeRef(editor, at, {
           affinity: 'inward'
         });

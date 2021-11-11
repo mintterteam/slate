@@ -1,5 +1,5 @@
 import { isPlainObject } from 'is-plain-object';
-import { Text, Range, createEditor as createEditor$1, Node, Element } from 'slate';
+import { Range, Node, Text, Element, createEditor as createEditor$1 } from 'slate';
 
 function _defineProperty(obj, key, value) {
   if (key in obj) {
@@ -257,7 +257,7 @@ function createText(tagName, attributes, children) {
  * Create a top-level `Editor` object.
  */
 
-function createEditor(tagName, attributes, children) {
+var createEditor = makeEditor => (tagName, attributes, children) => {
   var otherChildren = [];
   var selectionChild;
 
@@ -271,7 +271,7 @@ function createEditor(tagName, attributes, children) {
 
   var descendants = resolveDescendants(otherChildren);
   var selection = {};
-  var editor = createEditor$1();
+  var editor = makeEditor();
   Object.assign(editor, attributes);
   editor.children = descendants; // Search the document's texts to see if any of them have tokens associated
   // that need incorporated into the selection.
@@ -312,7 +312,7 @@ function createEditor(tagName, attributes, children) {
   }
 
   return editor;
-}
+};
 
 function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) { symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); } keys.push.apply(keys, symbols); } return keys; }
 
@@ -324,7 +324,7 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
 var DEFAULT_CREATORS = {
   anchor: createAnchor,
   cursor: createCursor,
-  editor: createEditor,
+  editor: createEditor(createEditor$1),
   element: createElement,
   focus: createFocus,
   fragment: createFragment,
@@ -413,5 +413,5 @@ var normalizeElements = elements => {
 
 var jsx = createHyperscript();
 
-export { createHyperscript, jsx };
+export { createEditor, createHyperscript, jsx };
 //# sourceMappingURL=index.es.js.map

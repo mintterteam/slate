@@ -554,90 +554,92 @@ function createText(tagName, attributes, children) {
  * Create a top-level `Editor` object.
  */
 
-function createEditor(tagName, attributes, children) {
-  var otherChildren = [];
-  var selectionChild;
+var createEditor = function createEditor(makeEditor) {
+  return function (tagName, attributes, children) {
+    var otherChildren = [];
+    var selectionChild;
 
-  var _iterator2 = _createForOfIteratorHelper(children),
-      _step2;
+    var _iterator2 = _createForOfIteratorHelper(children),
+        _step2;
 
-  try {
-    for (_iterator2.s(); !(_step2 = _iterator2.n()).done;) {
-      var child = _step2.value;
+    try {
+      for (_iterator2.s(); !(_step2 = _iterator2.n()).done;) {
+        var child = _step2.value;
 
-      if (slate.Range.isRange(child)) {
-        selectionChild = child;
-      } else {
-        otherChildren.push(child);
+        if (slate.Range.isRange(child)) {
+          selectionChild = child;
+        } else {
+          otherChildren.push(child);
+        }
       }
+    } catch (err) {
+      _iterator2.e(err);
+    } finally {
+      _iterator2.f();
     }
-  } catch (err) {
-    _iterator2.e(err);
-  } finally {
-    _iterator2.f();
-  }
 
-  var descendants = resolveDescendants(otherChildren);
-  var selection = {};
-  var editor = slate.createEditor();
-  Object.assign(editor, attributes);
-  editor.children = descendants; // Search the document's texts to see if any of them have tokens associated
-  // that need incorporated into the selection.
+    var descendants = resolveDescendants(otherChildren);
+    var selection = {};
+    var editor = makeEditor();
+    Object.assign(editor, attributes);
+    editor.children = descendants; // Search the document's texts to see if any of them have tokens associated
+    // that need incorporated into the selection.
 
-  var _iterator3 = _createForOfIteratorHelper(slate.Node.texts(editor)),
-      _step3;
+    var _iterator3 = _createForOfIteratorHelper(slate.Node.texts(editor)),
+        _step3;
 
-  try {
-    for (_iterator3.s(); !(_step3 = _iterator3.n()).done;) {
-      var _step3$value = _slicedToArray(_step3.value, 2),
-          node = _step3$value[0],
-          path = _step3$value[1];
+    try {
+      for (_iterator3.s(); !(_step3 = _iterator3.n()).done;) {
+        var _step3$value = _slicedToArray(_step3.value, 2),
+            node = _step3$value[0],
+            path = _step3$value[1];
 
-      var anchor = getAnchorOffset(node);
-      var focus = getFocusOffset(node);
+        var anchor = getAnchorOffset(node);
+        var focus = getFocusOffset(node);
 
-      if (anchor != null) {
-        var _anchor = _slicedToArray(anchor, 1),
-            offset = _anchor[0];
+        if (anchor != null) {
+          var _anchor = _slicedToArray(anchor, 1),
+              offset = _anchor[0];
 
-        selection.anchor = {
-          path: path,
-          offset: offset
-        };
+          selection.anchor = {
+            path: path,
+            offset: offset
+          };
+        }
+
+        if (focus != null) {
+          var _focus = _slicedToArray(focus, 1),
+              _offset = _focus[0];
+
+          selection.focus = {
+            path: path,
+            offset: _offset
+          };
+        }
       }
-
-      if (focus != null) {
-        var _focus = _slicedToArray(focus, 1),
-            _offset = _focus[0];
-
-        selection.focus = {
-          path: path,
-          offset: _offset
-        };
-      }
+    } catch (err) {
+      _iterator3.e(err);
+    } finally {
+      _iterator3.f();
     }
-  } catch (err) {
-    _iterator3.e(err);
-  } finally {
-    _iterator3.f();
-  }
 
-  if (selection.anchor && !selection.focus) {
-    throw new Error("Slate hyperscript ranges must have both `<anchor />` and `<focus />` defined if one is defined, but you only defined `<anchor />`. For collapsed selections, use `<cursor />` instead.");
-  }
+    if (selection.anchor && !selection.focus) {
+      throw new Error("Slate hyperscript ranges must have both `<anchor />` and `<focus />` defined if one is defined, but you only defined `<anchor />`. For collapsed selections, use `<cursor />` instead.");
+    }
 
-  if (!selection.anchor && selection.focus) {
-    throw new Error("Slate hyperscript ranges must have both `<anchor />` and `<focus />` defined if one is defined, but you only defined `<focus />`. For collapsed selections, use `<cursor />` instead.");
-  }
+    if (!selection.anchor && selection.focus) {
+      throw new Error("Slate hyperscript ranges must have both `<anchor />` and `<focus />` defined if one is defined, but you only defined `<focus />`. For collapsed selections, use `<cursor />` instead.");
+    }
 
-  if (selectionChild != null) {
-    editor.selection = selectionChild;
-  } else if (slate.Range.isRange(selection)) {
-    editor.selection = selection;
-  }
+    if (selectionChild != null) {
+      editor.selection = selectionChild;
+    } else if (slate.Range.isRange(selection)) {
+      editor.selection = selection;
+    }
 
-  return editor;
-}
+    return editor;
+  };
+};
 
 function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) { symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); } keys.push.apply(keys, symbols); } return keys; }
 
@@ -649,7 +651,7 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
 var DEFAULT_CREATORS = {
   anchor: createAnchor,
   cursor: createCursor,
-  editor: createEditor,
+  editor: createEditor(slate.createEditor),
   element: createElement,
   focus: createFocus,
   fragment: createFragment,
@@ -739,6 +741,7 @@ var normalizeElements = function normalizeElements(elements) {
 
 var jsx = createHyperscript();
 
+exports.createEditor = createEditor;
 exports.createHyperscript = createHyperscript;
 exports.jsx = jsx;
 //# sourceMappingURL=index.js.map

@@ -1,4 +1,4 @@
-import { createAnchor, createCursor, createEditor, createElement, createFocus, createFragment, createSelection, createText } from './creators';
+import { createAnchor, createCursor, createElement, createFocus, createFragment, createSelection, createText } from './creators';
 /**
  * `HyperscriptCreators` are dictionaries of `HyperscriptCreator` functions
  * keyed by tag name.
@@ -21,7 +21,9 @@ declare const createHyperscript: (options?: {
 }) => <S extends "element" | "anchor" | "cursor" | "editor" | "focus" | "fragment" | "selection" | "text">(tagName: S, attributes?: Object | undefined, ...children: any[]) => ReturnType<({
     anchor: typeof createAnchor;
     cursor: typeof createCursor;
-    editor: typeof createEditor;
+    editor: (tagName: string, attributes: {
+        [key: string]: any;
+    }, children: any[]) => import("slate").BaseEditor;
     element: typeof createElement;
     focus: typeof createFocus;
     fragment: typeof createFragment;
@@ -30,7 +32,9 @@ declare const createHyperscript: (options?: {
 } | {
     anchor: typeof createAnchor;
     cursor: typeof createCursor;
-    editor: typeof createEditor;
+    editor: (tagName: string, attributes: {
+        [key: string]: any;
+    }, children: any[]) => import("slate").BaseEditor;
     element: typeof createElement;
     focus: typeof createFocus;
     fragment: typeof createFragment;
