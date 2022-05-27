@@ -32,7 +32,7 @@ const String = (props: {
   // width space that will convert into a line break when copying and pasting
   // to support expected plain text.
   if (
-    leaf.text === '' &&
+    leaf.value === '' &&
     parent.children[parent.children.length - 1] === text &&
     !editor.isInline(parent) &&
     Editor.string(editor, parentPath) === ''
@@ -43,17 +43,17 @@ const String = (props: {
   // COMPAT: If the text is empty, it's because it's on the edge of an inline
   // node, so we render a zero-width space so that the selection can be
   // inserted next to it still.
-  if (leaf.text === '') {
+  if (leaf.value === '') {
     return <ZeroWidthString isMarkPlaceholder={isMarkPlaceholder} />
   }
 
   // COMPAT: Browsers will collapse trailing new lines at the end of blocks,
   // so we need to add an extra trailing new lines to prevent that.
-  if (isLast && leaf.text.slice(-1) === '\n') {
-    return <TextString isTrailing text={leaf.text} />
+  if (isLast && leaf.value.slice(-1) === '\n') {
+    return <TextString isTrailing text={leaf.value} />
   }
 
-  return <TextString text={leaf.text} />
+  return <TextString text={leaf.value} />
 }
 
 /**

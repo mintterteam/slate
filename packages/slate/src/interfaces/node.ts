@@ -259,7 +259,7 @@ export const Node: NodeInterface = {
 
       return properties
     } else {
-      const { text, ...properties } = node
+      const { value, ...properties } = node
 
       return properties
     }
@@ -314,12 +314,12 @@ export const Node: NodeInterface = {
 
         if (Path.equals(path, end.path)) {
           const leaf = Node.leaf(r, path)
-          leaf.text = leaf.text.slice(0, end.offset)
+          leaf.value = leaf.value.slice(0, end.offset)
         }
 
         if (Path.equals(path, start.path)) {
           const leaf = Node.leaf(r, path)
-          leaf.text = leaf.text.slice(start.offset)
+          leaf.value = leaf.value.slice(start.offset)
         }
       }
 
@@ -577,7 +577,7 @@ export const Node: NodeInterface = {
 
   string(node: Node): string {
     if (Text.isText(node)) {
-      return node.text
+      return node.value
     } else {
       return node.children.map(Node.string).join('')
     }

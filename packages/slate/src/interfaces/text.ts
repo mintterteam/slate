@@ -10,7 +10,7 @@ import { isDeepEqual } from '../utils/deep-equal'
  */
 
 export interface BaseText {
-  text: string
+  value: string
 }
 
 export type Text = ExtendedType<'Text', BaseText>
@@ -72,7 +72,7 @@ export const Text: TextInterface = {
    */
 
   isTextProps(props: any): props is Partial<Text> {
-    return (props as Partial<Text>).text !== undefined
+    return (props as Partial<Text>).value !== undefined
   },
 
   /**
@@ -112,7 +112,7 @@ export const Text: TextInterface = {
       const decorationEnd = end.offset
 
       for (const leaf of leaves) {
-        const { length } = leaf.text
+        const { length } = leaf.value
         const leafStart = leafEnd
         leafEnd += length
 
@@ -144,14 +144,14 @@ export const Text: TextInterface = {
 
         if (decorationEnd < leafEnd) {
           const off = decorationEnd - leafStart
-          after = { ...middle, text: middle.text.slice(off) }
-          middle = { ...middle, text: middle.text.slice(0, off) }
+          after = { ...middle, text: middle.value.slice(off) }
+          middle = { ...middle, value: middle.value.slice(0, off) }
         }
 
         if (decorationStart > leafStart) {
           const off = decorationStart - leafStart
-          before = { ...middle, text: middle.text.slice(0, off) }
-          middle = { ...middle, text: middle.text.slice(off) }
+          before = { ...middle, text: middle.value.slice(0, off) }
+          middle = { ...middle, value: middle.value.slice(off) }
         }
 
         Object.assign(middle, rest)
