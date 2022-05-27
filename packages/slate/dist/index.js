@@ -4276,7 +4276,7 @@ var Text = {
    * Check if a value implements the `Text` interface.
    */
   isText: function isText(value) {
-    return isPlainObject.isPlainObject(value) && typeof value.text === 'string';
+    return isPlainObject.isPlainObject(value) && typeof value.value === 'string';
   },
 
   /**
@@ -4303,7 +4303,7 @@ var Text = {
    */
   matches: function matches(text, props) {
     for (var key in props) {
-      if (key === 'text') {
+      if (key === 'value') {
         continue;
       }
 
