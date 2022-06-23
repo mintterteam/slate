@@ -6,6 +6,7 @@ import { ExtendedType } from './custom-types';
  * nodes in the document tree as they cannot contain any children.
  */
 export interface BaseText {
+    type: 'text';
     value: string;
 }
 export declare type Text = ExtendedType<'Text', BaseText>;

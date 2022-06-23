@@ -788,7 +788,7 @@ export const Editor: EditorInterface = {
         const { value, ...rest } = node
         return rest
       } else {
-        return {}
+        return { type: 'text' }
       }
     }
 
