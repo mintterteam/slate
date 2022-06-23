@@ -123,7 +123,8 @@ var createEditor = () => {
         } else {
           var marks = _objectSpread$9(_objectSpread$9({}, Editor.marks(editor) || {}), {}, {
             [key]: value
-          });
+          }); // @ts-ignore
+
 
           editor.marks = marks;
 
@@ -224,6 +225,7 @@ var createEditor = () => {
 
       if (Element.isElement(node) && node.children.length === 0) {
         var child = {
+          type: 'text',
           value: ''
         };
         Transforms.insertNodes(editor, child, {
@@ -261,6 +263,7 @@ var createEditor = () => {
           if (editor.isInline(_child)) {
             if (prev == null || !Text.isText(prev)) {
               var newChild = {
+                type: 'text',
                 value: ''
               };
               Transforms.insertNodes(editor, newChild, {
@@ -270,6 +273,7 @@ var createEditor = () => {
               n++;
             } else if (isLast) {
               var _newChild = {
+                type: 'text',
                 value: ''
               };
               Transforms.insertNodes(editor, _newChild, {
@@ -321,7 +325,8 @@ var createEditor = () => {
         } else {
           var marks = _objectSpread$9({}, Editor.marks(editor) || {});
 
-          delete marks[key];
+          delete marks[key]; // @ts-ignore
+
           editor.marks = marks;
 
           if (!FLUSHING.get(editor)) {
@@ -1263,7 +1268,9 @@ var Editor = {
 
         return _rest;
       } else {
-        return {};
+        return {
+          type: 'text'
+        };
       }
     }
 
@@ -3753,7 +3760,7 @@ var Text = {
    * Check if a value implements the `Text` interface.
    */
   isText(value) {
-    return isPlainObject(value) && typeof value.value === 'string';
+    return isPlainObject(value) && typeof value.value === 'string' && value.type == 'text';
   },
 
   /**
@@ -4183,6 +4190,7 @@ var applyToDraft = (editor, selection, op) => {
 
           _node6.value = _before2;
           newNode = _objectSpread$3(_objectSpread$3({}, _properties), {}, {
+            type: 'text',
             value: _after2
           });
         } else {
@@ -4921,6 +4929,7 @@ var NodeTransforms = {
 
             if (!after) {
               var text = {
+                type: 'text',
                 value: ''
               };
               var afterPath = Path.next(voidPath);

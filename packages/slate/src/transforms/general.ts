@@ -286,6 +286,7 @@ const applyToDraft = (editor: Editor, selection: Selection, op: Operation) => {
         node.value = before
         newNode = {
           ...(properties as Partial<Text>),
+          type: 'text',
           value: after,
         }
       } else {

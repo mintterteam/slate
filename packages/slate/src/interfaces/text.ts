@@ -10,6 +10,7 @@ import { isDeepEqual } from '../utils/deep-equal'
  */
 
 export interface BaseText {
+  type: 'text'
   value: string
 }
 
@@ -56,7 +57,7 @@ export const Text: TextInterface = {
    */
 
   isText(value: any): value is Text {
-    return isPlainObject(value) && typeof value.value === 'string'
+    return isPlainObject(value) && typeof value.value === 'string' && value.type == 'text'
   },
 
   /**

@@ -399,6 +399,7 @@ var resolveDescendants = function resolveDescendants(children) {
 
     if (typeof child === 'string') {
       var text = {
+        type: 'text',
         value: child
       };
       STRINGS.add(text);
@@ -536,6 +537,7 @@ function createText(tagName, attributes, children) {
 
   if (node == null) {
     node = {
+      type: 'text',
       value: ''
     };
   }

@@ -136,6 +136,7 @@ export const createEditor = (): Editor => {
             [key]: value,
           }
 
+          // @ts-ignore
           editor.marks = marks
           if (!FLUSHING.get(editor)) {
             editor.onChange()
@@ -218,7 +219,7 @@ export const createEditor = (): Editor => {
 
       // Ensure that block and inline nodes have at least one text child.
       if (Element.isElement(node) && node.children.length === 0) {
-        const child = { value: '' }
+        const child: Text = { type: 'text', value: '' }
         Transforms.insertNodes(editor, child, {
           at: path.concat(0),
           voids: true,
@@ -260,14 +261,14 @@ export const createEditor = (): Editor => {
           // Ensure that inline nodes are surrounded by text nodes.
           if (editor.isInline(child)) {
             if (prev == null || !Text.isText(prev)) {
-              const newChild = { value: '' }
+              const newChild: Text = { type: 'text', value: '' }
               Transforms.insertNodes(editor, newChild, {
                 at: path.concat(n),
                 voids: true,
               })
               n++
             } else if (isLast) {
-              const newChild = { value: '' }
+              const newChild: Text = { type: 'text', value: '' }
               Transforms.insertNodes(editor, newChild, {
                 at: path.concat(n + 1),
                 voids: true,
@@ -329,6 +330,7 @@ export const createEditor = (): Editor => {
         } else {
           const marks = { ...(Editor.marks(editor) || {}) }
           delete marks[key]
+          // @ts-ignore
           editor.marks = marks
           if (!FLUSHING.get(editor)) {
             editor.onChange()

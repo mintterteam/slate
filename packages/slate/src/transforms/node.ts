@@ -751,7 +751,7 @@ export const NodeTransforms: NodeTransforms = {
             let after = Editor.after(editor, voidPath)
 
             if (!after) {
-              const text = { value: '' }
+              const text: Text = { type: 'text', value: '' }
               const afterPath = Path.next(voidPath)
               Transforms.insertNodes(editor, text, { at: afterPath, voids })
               after = Editor.point(editor, afterPath)!
