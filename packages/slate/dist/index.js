@@ -298,7 +298,7 @@ var createEditor = function createEditor() {
         dirtyPathKeys = oldDirtyPathKeys;
       }
 
-      var newDirtyPaths = getDirtyPaths(op);
+      var newDirtyPaths = editor.getDirtyPaths(op);
 
       var _iterator5 = _createForOfIteratorHelper$7(newDirtyPaths),
           _step5;
@@ -414,6 +414,7 @@ var createEditor = function createEditor() {
       if (selection) {
         if (marks) {
           var node = _objectSpread$9({
+            type: 'text',
             value: value
           }, marks);
 
@@ -545,120 +546,120 @@ var createEditor = function createEditor() {
           }
         }
       }
+    },
+
+    /**
+     * Get the "dirty" paths generated from an operation.
+     */
+    getDirtyPaths: function getDirtyPaths(op) {
+      switch (op.type) {
+        case 'insert_text':
+        case 'remove_text':
+        case 'set_node':
+          {
+            var path = op.path;
+            return Path.levels(path);
+          }
+
+        case 'insert_node':
+          {
+            var node = op.node,
+                _path2 = op.path;
+            var levels = Path.levels(_path2);
+            var descendants = Text.isText(node) ? [] : Array.from(Node.nodes(node), function (_ref3) {
+              var _ref4 = _slicedToArray(_ref3, 2),
+                  p = _ref4[1];
+
+              return _path2.concat(p);
+            });
+            return [].concat(_toConsumableArray(levels), _toConsumableArray(descendants));
+          }
+
+        case 'merge_node':
+          {
+            var _path3 = op.path;
+            var ancestors = Path.ancestors(_path3);
+            var previousPath = Path.previous(_path3);
+            return [].concat(_toConsumableArray(ancestors), [previousPath]);
+          }
+
+        case 'move_node':
+          {
+            var _path4 = op.path,
+                newPath = op.newPath;
+
+            if (Path.equals(_path4, newPath)) {
+              return [];
+            }
+
+            var oldAncestors = [];
+            var newAncestors = [];
+
+            var _iterator6 = _createForOfIteratorHelper$7(Path.ancestors(_path4)),
+                _step6;
+
+            try {
+              for (_iterator6.s(); !(_step6 = _iterator6.n()).done;) {
+                var ancestor = _step6.value;
+                var p = Path.transform(ancestor, op);
+                oldAncestors.push(p);
+              }
+            } catch (err) {
+              _iterator6.e(err);
+            } finally {
+              _iterator6.f();
+            }
+
+            var _iterator7 = _createForOfIteratorHelper$7(Path.ancestors(newPath)),
+                _step7;
+
+            try {
+              for (_iterator7.s(); !(_step7 = _iterator7.n()).done;) {
+                var _ancestor = _step7.value;
+
+                var _p = Path.transform(_ancestor, op);
+
+                newAncestors.push(_p);
+              }
+            } catch (err) {
+              _iterator7.e(err);
+            } finally {
+              _iterator7.f();
+            }
+
+            var newParent = newAncestors[newAncestors.length - 1];
+            var newIndex = newPath[newPath.length - 1];
+            var resultPath = newParent.concat(newIndex);
+            return [].concat(oldAncestors, newAncestors, [resultPath]);
+          }
+
+        case 'remove_node':
+          {
+            var _path5 = op.path;
+
+            var _ancestors = Path.ancestors(_path5);
+
+            return _toConsumableArray(_ancestors);
+          }
+
+        case 'split_node':
+          {
+            var _path6 = op.path;
+
+            var _levels = Path.levels(_path6);
+
+            var nextPath = Path.next(_path6);
+            return [].concat(_toConsumableArray(_levels), [nextPath]);
+          }
+
+        default:
+          {
+            return [];
+          }
+      }
     }
   };
   return editor;
-};
-/**
- * Get the "dirty" paths generated from an operation.
- */
-
-var getDirtyPaths = function getDirtyPaths(op) {
-  switch (op.type) {
-    case 'insert_text':
-    case 'remove_text':
-    case 'set_node':
-      {
-        var path = op.path;
-        return Path.levels(path);
-      }
-
-    case 'insert_node':
-      {
-        var node = op.node,
-            _path2 = op.path;
-        var levels = Path.levels(_path2);
-        var descendants = Text.isText(node) ? [] : Array.from(Node.nodes(node), function (_ref3) {
-          var _ref4 = _slicedToArray(_ref3, 2),
-              p = _ref4[1];
-
-          return _path2.concat(p);
-        });
-        return [].concat(_toConsumableArray(levels), _toConsumableArray(descendants));
-      }
-
-    case 'merge_node':
-      {
-        var _path3 = op.path;
-        var ancestors = Path.ancestors(_path3);
-        var previousPath = Path.previous(_path3);
-        return [].concat(_toConsumableArray(ancestors), [previousPath]);
-      }
-
-    case 'move_node':
-      {
-        var _path4 = op.path,
-            newPath = op.newPath;
-
-        if (Path.equals(_path4, newPath)) {
-          return [];
-        }
-
-        var oldAncestors = [];
-        var newAncestors = [];
-
-        var _iterator6 = _createForOfIteratorHelper$7(Path.ancestors(_path4)),
-            _step6;
-
-        try {
-          for (_iterator6.s(); !(_step6 = _iterator6.n()).done;) {
-            var ancestor = _step6.value;
-            var p = Path.transform(ancestor, op);
-            oldAncestors.push(p);
-          }
-        } catch (err) {
-          _iterator6.e(err);
-        } finally {
-          _iterator6.f();
-        }
-
-        var _iterator7 = _createForOfIteratorHelper$7(Path.ancestors(newPath)),
-            _step7;
-
-        try {
-          for (_iterator7.s(); !(_step7 = _iterator7.n()).done;) {
-            var _ancestor = _step7.value;
-
-            var _p = Path.transform(_ancestor, op);
-
-            newAncestors.push(_p);
-          }
-        } catch (err) {
-          _iterator7.e(err);
-        } finally {
-          _iterator7.f();
-        }
-
-        var newParent = newAncestors[newAncestors.length - 1];
-        var newIndex = newPath[newPath.length - 1];
-        var resultPath = newParent.concat(newIndex);
-        return [].concat(oldAncestors, newAncestors, [resultPath]);
-      }
-
-    case 'remove_node':
-      {
-        var _path5 = op.path;
-
-        var _ancestors = Path.ancestors(_path5);
-
-        return _toConsumableArray(_ancestors);
-      }
-
-    case 'split_node':
-      {
-        var _path6 = op.path;
-
-        var _levels = Path.levels(_path6);
-
-        var nextPath = Path.next(_path6);
-        return [].concat(_toConsumableArray(_levels), [nextPath]);
-      }
-
-    default:
-      {
-        return [];
-      }
-  }
 };
 
 var objectWithoutPropertiesLoose = createCommonjsModule(function (module) {
@@ -1045,7 +1046,8 @@ var endsWithOddNumberOfRIs = function endsWithOddNumberOfRIs(str) {
 
 var isElement = function isElement(value) {
   return isPlainObject.isPlainObject(value) && Node.isNodeList(value.children) && !Editor.isEditor(value);
-};
+}; // eslint-disable-next-line no-redeclare
+
 
 var Element = {
   /**
@@ -1118,7 +1120,8 @@ function _createForOfIteratorHelper$5(o, allowArrayLike) { var it = typeof Symbo
 function _unsupportedIterableToArray$5(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray$5(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray$5(o, minLen); }
 
 function _arrayLikeToArray$5(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
-var IS_EDITOR_CACHE = new WeakMap();
+var IS_EDITOR_CACHE = new WeakMap(); // eslint-disable-next-line no-redeclare
+
 var Editor = {
   /**
    * Get the ancestor above a location in the document.
@@ -1416,14 +1419,17 @@ var Editor = {
    * Check if a value is an `Editor` object.
    */
   isEditor: function isEditor(value) {
-    if (!isPlainObject.isPlainObject(value)) return false;
     var cachedIsEditor = IS_EDITOR_CACHE.get(value);
 
     if (cachedIsEditor !== undefined) {
       return cachedIsEditor;
     }
 
-    var isEditor = typeof value.addMark === 'function' && typeof value.apply === 'function' && typeof value.deleteBackward === 'function' && typeof value.deleteForward === 'function' && typeof value.deleteFragment === 'function' && typeof value.insertBreak === 'function' && typeof value.insertSoftBreak === 'function' && typeof value.insertFragment === 'function' && typeof value.insertNode === 'function' && typeof value.insertText === 'function' && typeof value.isInline === 'function' && typeof value.isVoid === 'function' && typeof value.normalizeNode === 'function' && typeof value.onChange === 'function' && typeof value.removeMark === 'function' && (value.marks === null || isPlainObject.isPlainObject(value.marks)) && (value.selection === null || Range.isRange(value.selection)) && Node.isNodeList(value.children) && Operation.isOperationList(value.operations);
+    if (!isPlainObject.isPlainObject(value)) {
+      return false;
+    }
+
+    var isEditor = typeof value.addMark === 'function' && typeof value.apply === 'function' && typeof value.deleteBackward === 'function' && typeof value.deleteForward === 'function' && typeof value.deleteFragment === 'function' && typeof value.insertBreak === 'function' && typeof value.insertSoftBreak === 'function' && typeof value.insertFragment === 'function' && typeof value.insertNode === 'function' && typeof value.insertText === 'function' && typeof value.isInline === 'function' && typeof value.isVoid === 'function' && typeof value.normalizeNode === 'function' && typeof value.onChange === 'function' && typeof value.removeMark === 'function' && typeof value.getDirtyPaths === 'function' && (value.marks === null || isPlainObject.isPlainObject(value.marks)) && (value.selection === null || Range.isRange(value.selection)) && Node.isNodeList(value.children) && Operation.isOperationList(value.operations);
     IS_EDITOR_CACHE.set(value, isEditor);
     return isEditor;
   },
@@ -2643,7 +2649,8 @@ var Location = {
   isLocation: function isLocation(value) {
     return Path.isPath(value) || Point.isPoint(value) || Range.isRange(value);
   }
-};
+}; // eslint-disable-next-line no-redeclare
+
 var Span = {
   /**
    * Check if a value implements the `Span` interface.
@@ -2661,7 +2668,8 @@ function _createForOfIteratorHelper$4(o, allowArrayLike) { var it = typeof Symbo
 function _unsupportedIterableToArray$4(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray$4(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray$4(o, minLen); }
 
 function _arrayLikeToArray$4(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
-var IS_NODE_LIST_CACHE = new WeakMap();
+var IS_NODE_LIST_CACHE = new WeakMap(); // eslint-disable-next-line no-redeclare
+
 var Node = {
   /**
    * Get the node at a specific path, asserting that it's an ancestor node.
@@ -2670,7 +2678,7 @@ var Node = {
     var node = Node.get(root, path);
 
     if (Text.isText(node)) {
-      throw new Error("Cannot get the ancestor node at path [".concat(path, "] because it refers to a text node instead: ").concat(node));
+      throw new Error("Cannot get the ancestor node at path [".concat(path, "] because it refers to a text node instead: ").concat(Scrubber.stringify(node)));
     }
 
     return node;
@@ -2707,13 +2715,13 @@ var Node = {
    */
   child: function child(root, index) {
     if (Text.isText(root)) {
-      throw new Error("Cannot get the child of a text node: ".concat(JSON.stringify(root)));
+      throw new Error("Cannot get the child of a text node: ".concat(Scrubber.stringify(root)));
     }
 
     var c = root.children[index];
 
     if (c == null) {
-      throw new Error("Cannot get child at index `".concat(index, "` in node: ").concat(JSON.stringify(root)));
+      throw new Error("Cannot get child at index `".concat(index, "` in node: ").concat(Scrubber.stringify(root)));
     }
 
     return c;
@@ -2754,7 +2762,7 @@ var Node = {
     var node = Node.get(root, path);
 
     if (Editor.isEditor(node)) {
-      throw new Error("Cannot get the descendant node at path [".concat(path, "] because it refers to the root editor node instead: ").concat(node));
+      throw new Error("Cannot get the descendant node at path [".concat(path, "] because it refers to the root editor node instead: ").concat(Scrubber.stringify(node)));
     }
 
     return node;
@@ -2857,7 +2865,7 @@ var Node = {
    */
   fragment: function fragment(root, range) {
     if (Text.isText(root)) {
-      throw new Error("Cannot get a fragment starting from a root text node: ".concat(JSON.stringify(root)));
+      throw new Error("Cannot get a fragment starting from a root text node: ".concat(Scrubber.stringify(root)));
     }
 
     var newRoot = immer.produce({
@@ -2927,7 +2935,7 @@ var Node = {
       var p = path[i];
 
       if (Text.isText(node) || !node.children[p]) {
-        throw new Error("Cannot find a descendant at path [".concat(path, "] in node: ").concat(JSON.stringify(root)));
+        throw new Error("Cannot find a descendant at path [".concat(path, "] in node: ").concat(Scrubber.stringify(root)));
       }
 
       node = node.children[p];
@@ -3010,7 +3018,7 @@ var Node = {
     var node = Node.get(root, path);
 
     if (!Text.isText(node)) {
-      throw new Error("Cannot get the leaf node at path [".concat(path, "] because it refers to a non-leaf node: ").concat(node));
+      throw new Error("Cannot get the leaf node at path [".concat(path, "] because it refers to a non-leaf node: ").concat(Scrubber.stringify(node)));
     }
 
     return node;
@@ -3179,6 +3187,7 @@ var Node = {
 function ownKeys$7(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) { symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); } keys.push.apply(keys, symbols); } return keys; }
 
 function _objectSpread$7(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$7(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$7(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
+
 var Operation = {
   /**
    * Check of a value is a `NodeOperation` object.
@@ -3795,6 +3804,7 @@ var PathRef = {
 function ownKeys$6(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) { symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); } keys.push.apply(keys, symbols); } return keys; }
 
 function _objectSpread$6(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$6(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$6(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
+
 var Point = {
   /**
    * Compare a point to another, returning an integer indicating whether the
@@ -3952,6 +3962,7 @@ var _excluded$2 = ["anchor", "focus"];
 function ownKeys$5(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) { symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); } keys.push.apply(keys, symbols); } return keys; }
 
 function _objectSpread$5(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$5(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$5(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
+
 var Range = {
   /**
    * Get the start and end points of a range, in the order in which they appear
@@ -4201,6 +4212,33 @@ var RangeRef = {
   }
 };
 
+var _scrubber = undefined;
+/**
+ * This interface implements a stringify() function, which is used by Slate
+ * internally when generating exceptions containing end user data. Developers
+ * using Slate may call Scrubber.setScrubber() to alter the behavior of this
+ * stringify() function.
+ *
+ * For example, to prevent the cleartext logging of 'text' fields within Nodes:
+ *
+ *    import { Scrubber } from 'slate';
+ *    Scrubber.setScrubber((key, val) => {
+ *      if (key === 'text') return '...scrubbed...'
+ *      return val
+ *    });
+ *
+ */
+// eslint-disable-next-line no-redeclare
+
+var Scrubber = {
+  setScrubber: function setScrubber(scrubber) {
+    _scrubber = scrubber;
+  },
+  stringify: function stringify(value) {
+    return JSON.stringify(value, _scrubber);
+  }
+};
+
 /*
   Custom deep equal comparison for Slate nodes.
 
@@ -4257,6 +4295,7 @@ function _arrayLikeToArray$3(arr, len) { if (len == null || len > arr.length) le
 function ownKeys$4(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) { symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); } keys.push.apply(keys, symbols); } return keys; }
 
 function _objectSpread$4(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$4(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$4(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
+
 var Text = {
   /**
    * Check if two text nodes are equal.
@@ -4345,7 +4384,9 @@ var Text = {
             end = _Range$edges2[1];
 
         var next = [];
-        var o = 0;
+        var leafEnd = 0;
+        var decorationStart = start.offset;
+        var decorationEnd = end.offset;
 
         var _iterator2 = _createForOfIteratorHelper$3(leaves),
             _step2;
@@ -4354,17 +4395,17 @@ var Text = {
           for (_iterator2.s(); !(_step2 = _iterator2.n()).done;) {
             var leaf = _step2.value;
             var length = leaf.value.length;
-            var offset = o;
-            o += length; // If the range encompases the entire leaf, add the range.
+            var leafStart = leafEnd;
+            leafEnd += length; // If the range encompasses the entire leaf, add the range.
 
-            if (start.offset <= offset && end.offset >= o) {
+            if (decorationStart <= leafStart && leafEnd <= decorationEnd) {
               Object.assign(leaf, rest);
               next.push(leaf);
               continue;
             } // If the range expanded and match the leaf, or starts after, or ends before it, continue.
 
 
-            if (start.offset !== end.offset && (start.offset === o || end.offset === offset) || start.offset > o || end.offset < offset || end.offset === offset && offset !== 0) {
+            if (decorationStart !== decorationEnd && (decorationStart === leafEnd || decorationEnd === leafStart) || decorationStart > leafEnd || decorationEnd < leafStart || decorationEnd === leafStart && leafStart !== 0) {
               next.push(leaf);
               continue;
             } // Otherwise we need to split the leaf, at the start, end, or both,
@@ -4376,21 +4417,21 @@ var Text = {
             var before = void 0;
             var after = void 0;
 
-            if (end.offset < o) {
-              var off = end.offset - offset;
+            if (decorationEnd < leafEnd) {
+              var off = decorationEnd - leafStart;
               after = _objectSpread$4(_objectSpread$4({}, middle), {}, {
-                value: middle.value.slice(off)
+                text: middle.value.slice(off)
               });
               middle = _objectSpread$4(_objectSpread$4({}, middle), {}, {
                 value: middle.value.slice(0, off)
               });
             }
 
-            if (start.offset > offset) {
-              var _off = start.offset - offset;
+            if (decorationStart > leafStart) {
+              var _off = decorationStart - leafStart;
 
               before = _objectSpread$4(_objectSpread$4({}, middle), {}, {
-                value: middle.value.slice(0, _off)
+                text: middle.value.slice(0, _off)
               });
               middle = _objectSpread$4(_objectSpread$4({}, middle), {}, {
                 value: middle.value.slice(_off)
@@ -4531,7 +4572,7 @@ var applyToDraft = function applyToDraft(editor, selection, op) {
 
           (_prev$children = prev.children).push.apply(_prev$children, _toConsumableArray(_node2.children));
         } else {
-          throw new Error("Cannot apply a \"merge_node\" operation at path [".concat(_path2, "] to nodes of different interfaces: ").concat(_node2, " ").concat(prev));
+          throw new Error("Cannot apply a \"merge_node\" operation at path [".concat(_path2, "] to nodes of different interfaces: ").concat(Scrubber.stringify(_node2), " ").concat(Scrubber.stringify(prev)));
         }
 
         _parent.children.splice(_index, 1);
@@ -4772,7 +4813,7 @@ var applyToDraft = function applyToDraft(editor, selection, op) {
         } else {
           if (selection == null) {
             if (!Range.isRange(_newProperties)) {
-              throw new Error("Cannot apply an incomplete \"set_selection\" operation properties ".concat(JSON.stringify(_newProperties), " when there is no current selection."));
+              throw new Error("Cannot apply an incomplete \"set_selection\" operation properties ".concat(Scrubber.stringify(_newProperties), " when there is no current selection."));
             }
 
             selection = _objectSpread$3({}, _newProperties);
@@ -4860,7 +4901,8 @@ var applyToDraft = function applyToDraft(editor, selection, op) {
   }
 
   return selection;
-};
+}; // eslint-disable-next-line no-redeclare
+
 
 var GeneralTransforms = {
   /**
@@ -4896,6 +4938,7 @@ function _createForOfIteratorHelper$1(o, allowArrayLike) { var it = typeof Symbo
 function _unsupportedIterableToArray$1(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray$1(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray$1(o, minLen); }
 
 function _arrayLikeToArray$1(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
+
 var NodeTransforms = {
   /**
    * Insert nodes at a specific location in the Editor.
@@ -5283,7 +5326,7 @@ var NodeTransforms = {
         position = prevNode.children.length;
         properties = _rest;
       } else {
-        throw new Error("Cannot merge the node at path [".concat(path, "] with the previous sibling because it is not the same kind: ").concat(JSON.stringify(node), " ").concat(JSON.stringify(prevNode)));
+        throw new Error("Cannot merge the node at path [".concat(path, "] with the previous sibling because it is not the same kind: ").concat(Scrubber.stringify(node), " ").concat(Scrubber.stringify(prevNode)));
       } // If the node isn't already the next sibling of the previous node, move
       // it so that it is before merging.
 
@@ -6075,6 +6118,7 @@ var matchPath = function matchPath(editor, path) {
 function ownKeys$1(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) { symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); } keys.push.apply(keys, symbols); } return keys; }
 
 function _objectSpread$1(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$1(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$1(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
+
 var SelectionTransforms = {
   /**
    * Collapse the selection.
@@ -6188,7 +6232,7 @@ var SelectionTransforms = {
     }
 
     if (!Range.isRange(target)) {
-      throw new Error("When setting the selection and the current selection is `null` you must provide at least an `anchor` and `focus`, but you passed: ".concat(JSON.stringify(target)));
+      throw new Error("When setting the selection and the current selection is `null` you must provide at least an `anchor` and `focus`, but you passed: ".concat(Scrubber.stringify(target)));
     }
 
     editor.apply({
@@ -6259,6 +6303,7 @@ function _createForOfIteratorHelper(o, allowArrayLike) { var it = typeof Symbol 
 function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen); }
 
 function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
+
 var TextTransforms = {
   /**
    * Delete content in the editor.
@@ -6283,7 +6328,10 @@ var TextTransforms = {
         return;
       }
 
+      var isCollapsed = false;
+
       if (Range.isRange(at) && Range.isCollapsed(at)) {
+        isCollapsed = true;
         at = at.anchor;
       }
 
@@ -6426,6 +6474,7 @@ var TextTransforms = {
       });
       var startRef = Editor.pointRef(editor, start);
       var endRef = Editor.pointRef(editor, end);
+      var removedText = '';
 
       if (!isSingleText && !startVoid) {
         var _point = startRef.current;
@@ -6438,12 +6487,16 @@ var TextTransforms = {
         var _start = start,
             offset = _start.offset;
         var text = node.value.slice(offset);
-        if (text.length > 0) editor.apply({
-          type: 'remove_text',
-          path: path,
-          offset: offset,
-          text: text
-        });
+
+        if (text.length > 0) {
+          editor.apply({
+            type: 'remove_text',
+            path: path,
+            offset: offset,
+            text: text
+          });
+          removedText = text;
+        }
       }
 
       for (var _i = 0, _pathRefs = pathRefs; _i < _pathRefs.length; _i++) {
@@ -6470,12 +6523,15 @@ var TextTransforms = {
 
         var _text = _node.value.slice(_offset, end.offset);
 
-        if (_text.length > 0) editor.apply({
-          type: 'remove_text',
-          path: _path2,
-          offset: _offset,
-          text: _text
-        });
+        if (_text.length > 0) {
+          editor.apply({
+            type: 'remove_text',
+            path: _path2,
+            offset: _offset,
+            text: _text
+          });
+          removedText = _text;
+        }
       }
 
       if (!isSingleText && isAcrossBlocks && endRef.current && startRef.current) {
@@ -6484,6 +6540,13 @@ var TextTransforms = {
           hanging: true,
           voids: voids
         });
+      } // For Thai script, deleting N character(s) backward should delete
+      // N code point(s) instead of an entire grapheme cluster.
+      // Therefore, the remaining code points should be inserted back.
+
+
+      if (isCollapsed && reverse && unit === 'character' && removedText.length > 1 && removedText.match(/[\u0E00-\u0E7F]+/)) {
+        Transforms.insertText(editor, removedText.slice(0, removedText.length - distance));
       }
 
       var startUnref = startRef.unref();
@@ -6688,15 +6751,15 @@ var TextTransforms = {
 
       var isInlineStart = Editor.isStart(editor, at, inlinePath);
       var isInlineEnd = Editor.isEnd(editor, at, inlinePath);
-      var middleRef = Editor.pathRef(editor, isBlockEnd ? Path.next(blockPath) : blockPath);
+      var middleRef = Editor.pathRef(editor, isBlockEnd && !ends.length ? Path.next(blockPath) : blockPath);
       var endRef = Editor.pathRef(editor, isInlineEnd ? Path.next(inlinePath) : inlinePath);
-      var blockPathRef = Editor.pathRef(editor, blockPath);
       Transforms.splitNodes(editor, {
         at: at,
         match: function match(n) {
           return hasBlocks ? Editor.isBlock(editor, n) : Text.isText(n) || Editor.isInline(editor, n);
         },
         mode: hasBlocks ? 'lowest' : 'highest',
+        always: hasBlocks && (!isBlockStart || starts.length > 0) && (!isBlockEnd || ends.length > 0),
         voids: voids
       });
       var startRef = Editor.pathRef(editor, !isInlineStart || isInlineStart && isInlineEnd ? Path.next(inlinePath) : inlinePath);
@@ -6709,9 +6772,9 @@ var TextTransforms = {
         voids: voids
       });
 
-      if (isBlockEmpty && middles.length) {
+      if (isBlockEmpty && !starts.length && middles.length && !ends.length) {
         Transforms["delete"](editor, {
-          at: blockPathRef.unref(),
+          at: blockPath,
           voids: voids
         });
       }
@@ -6736,17 +6799,19 @@ var TextTransforms = {
       if (!options.at) {
         var path;
 
-        if (ends.length > 0) {
+        if (ends.length > 0 && endRef.current) {
           path = Path.previous(endRef.current);
-        } else if (middles.length > 0) {
+        } else if (middles.length > 0 && middleRef.current) {
           path = Path.previous(middleRef.current);
-        } else {
+        } else if (startRef.current) {
           path = Path.previous(startRef.current);
         }
 
-        var _end2 = Editor.end(editor, path);
+        if (path) {
+          var _end2 = Editor.end(editor, path);
 
-        Transforms.select(editor, _end2);
+          Transforms.select(editor, _end2);
+        }
       }
 
       startRef.unref();
@@ -6838,6 +6903,7 @@ exports.Point = Point;
 exports.PointRef = PointRef;
 exports.Range = Range;
 exports.RangeRef = RangeRef;
+exports.Scrubber = Scrubber;
 exports.Span = Span;
 exports.Text = Text;
 exports.Transforms = Transforms;

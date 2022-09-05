@@ -1,4 +1,4 @@
-import { Node, Path, Point, Range, BaseEditor } from 'slate';
+import { BaseEditor, Editor, Node, Path, Point, Range } from 'slate';
 import { Key } from '../utils/key';
 import { DOMNode, DOMPoint, DOMRange, DOMSelection, DOMStaticRange } from '../utils/dom';
 /**
@@ -116,5 +116,13 @@ export declare const ReactEditor: {
         placeholder?: string | undefined;
     };
     hasRange(editor: ReactEditor, range: Range): boolean;
+    /**
+     * Experimental and android specific: Flush all pending diffs and cancel composition at the next possible time.
+     */
+    androidScheduleFlush(editor: Editor): void;
+    /**
+     * Experimental and android specific: Get pending diffs
+     */
+    androidPendingDiffs(editor: Editor): import("../utils/diff-text").TextDiff[] | undefined;
 };
 //# sourceMappingURL=react-editor.d.ts.map

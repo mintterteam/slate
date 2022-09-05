@@ -1,4 +1,5 @@
 export * from './create-editor';
+export * from './interfaces/custom-types';
 export * from './interfaces/editor';
 export * from './interfaces/element';
 export * from './interfaces/location';
@@ -10,7 +11,7 @@ export * from './interfaces/point';
 export * from './interfaces/point-ref';
 export * from './interfaces/range';
 export * from './interfaces/range-ref';
+export * from './interfaces/scrubber';
 export * from './interfaces/text';
-export * from './interfaces/custom-types';
 export * from './transforms';
 //# sourceMappingURL=index.d.ts.map

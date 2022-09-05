@@ -20,7 +20,8 @@ var History = {
 
 var HISTORY = new WeakMap();
 var SAVING = new WeakMap();
-var MERGING = new WeakMap();
+var MERGING = new WeakMap(); // eslint-disable-next-line no-redeclare
+
 var HistoryEditor = {
   /**
    * Check if a value is a `HistoryEditor` object.

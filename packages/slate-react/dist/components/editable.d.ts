@@ -1,6 +1,6 @@
 import React from 'react';
 import { Element, NodeEntry, Range, Text } from 'slate';
-import { ReactEditor } from '..';
+import { ReactEditor } from '../plugin/react-editor';
 import { DOMNode, DOMRange } from '../utils/dom';
 /**
  * `RenderElementProps` are passed to the `renderElement` handler.

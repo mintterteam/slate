@@ -4,7 +4,7 @@ import { Element } from './element';
 import { LeafEdge, SelectionMode, TextDirection, TextUnit, TextUnitAdjustment, RangeDirection, MaximizeMode } from './types';
 export declare type BaseSelection = Range | null;
 export declare type Selection = ExtendedType<'Selection', BaseSelection>;
-export declare type EditorMarks = Omit<Text, 'value'>;
+export declare type EditorMarks = Omit<Text, 'value' | 'type'>;
 /**
  * The `Editor` interface stores all the state of a Slate editor. It is extended
  * by plugins that wish to add their own helpers and implement new behaviors.
@@ -30,6 +30,7 @@ export interface BaseEditor {
     insertNode: (node: Node) => void;
     insertText: (text: string) => void;
     removeMark: (key: string) => void;
+    getDirtyPaths: (op: Operation) => Path[];
 }
 export declare type Editor = ExtendedType<'Editor', BaseEditor>;
 export interface EditorAboveOptions<T extends Ancestor> {
@@ -161,7 +162,7 @@ export interface EditorInterface {
     last: (editor: Editor, at: Location) => NodeEntry;
     leaf: (editor: Editor, at: Location, options?: EditorLeafOptions) => NodeEntry<Text>;
     levels: <T extends Node>(editor: Editor, options?: EditorLevelsOptions<T>) => Generator<NodeEntry<T>, void, undefined>;
-    marks: (editor: Editor) => Omit<Text, 'value'> | null;
+    marks: (editor: Editor) => Omit<Text, 'value' | 'type'> | null;
     next: <T extends Descendant>(editor: Editor, options?: EditorNextOptions<T>) => NodeEntry<T> | undefined;
     node: (editor: Editor, at: Location, options?: EditorNodeOptions) => NodeEntry;
     nodes: <T extends Node>(editor: Editor, options?: EditorNodesOptions<T>) => Generator<NodeEntry<T>, void, undefined>;
