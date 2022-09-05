@@ -1,3 +1,4 @@
+import { BaseEditor } from 'slate';
 import { ReactEditor } from './react-editor';
 /**
  * `withReact` adds React and DOM specific behaviors to the editor.
@@ -7,5 +8,5 @@ import { ReactEditor } from './react-editor';
  *
  * See https://docs.slatejs.org/concepts/11-typescript to learn how.
  */
-export declare const withReact: <T extends ReactEditor>(editor: T) => T & ReactEditor;
+export declare const withReact: <T extends BaseEditor>(editor: T) => T & ReactEditor;
 //# sourceMappingURL=with-react.d.ts.map

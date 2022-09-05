@@ -10,7 +10,7 @@ var History = {
    * Check if a value is a `History` object.
    */
   isHistory: function isHistory(value) {
-    return isPlainObject.isPlainObject(value) && Array.isArray(value.redos) && Array.isArray(value.undos) && (value.redos.length === 0 || slate.Operation.isOperationList(value.redos[0])) && (value.undos.length === 0 || slate.Operation.isOperationList(value.undos[0]));
+    return isPlainObject.isPlainObject(value) && Array.isArray(value.redos) && Array.isArray(value.undos) && (value.redos.length === 0 || slate.Operation.isOperationList(value.redos[0].operations)) && (value.undos.length === 0 || slate.Operation.isOperationList(value.undos[0].operations));
   }
 };
 
@@ -20,7 +20,8 @@ var History = {
 
 var HISTORY = new WeakMap();
 var SAVING = new WeakMap();
-var MERGING = new WeakMap();
+var MERGING = new WeakMap(); // eslint-disable-next-line no-redeclare
+
 var HistoryEditor = {
   /**
    * Check if a value is a `HistoryEditor` object.
@@ -109,9 +110,14 @@ var withHistory = function withHistory(editor) {
 
     if (redos.length > 0) {
       var batch = redos[redos.length - 1];
+
+      if (batch.selectionBefore) {
+        slate.Transforms.setSelection(e, batch.selectionBefore);
+      }
+
       HistoryEditor.withoutSaving(e, function () {
         slate.Editor.withoutNormalizing(e, function () {
-          var _iterator = _createForOfIteratorHelper(batch),
+          var _iterator = _createForOfIteratorHelper(batch.operations),
               _step;
 
           try {
@@ -139,7 +145,7 @@ var withHistory = function withHistory(editor) {
       var batch = undos[undos.length - 1];
       HistoryEditor.withoutSaving(e, function () {
         slate.Editor.withoutNormalizing(e, function () {
-          var inverseOps = batch.map(slate.Operation.inverse).reverse();
+          var inverseOps = batch.operations.map(slate.Operation.inverse).reverse();
 
           var _iterator2 = _createForOfIteratorHelper(inverseOps),
               _step2;
@@ -154,6 +160,10 @@ var withHistory = function withHistory(editor) {
           } finally {
             _iterator2.f();
           }
+
+          if (batch.selectionBefore) {
+            slate.Transforms.setSelection(e, batch.selectionBefore);
+          }
         });
       });
       history.redos.push(batch);
@@ -166,8 +176,7 @@ var withHistory = function withHistory(editor) {
         history = e.history;
     var undos = history.undos;
     var lastBatch = undos[undos.length - 1];
-    var lastOp = lastBatch && lastBatch[lastBatch.length - 1];
-    var overwrite = shouldOverwrite(op, lastOp);
+    var lastOp = lastBatch && lastBatch.operations[lastBatch.operations.length - 1];
     var save = HistoryEditor.isSaving(e);
     var merge = HistoryEditor.isMerging(e);
 
@@ -182,18 +191,17 @@ var withHistory = function withHistory(editor) {
         } else if (operations.length !== 0) {
           merge = true;
         } else {
-          merge = shouldMerge(op, lastOp) || overwrite;
+          merge = shouldMerge(op, lastOp);
         }
       }
 
       if (lastBatch && merge) {
-        if (overwrite) {
-          lastBatch.pop();
-        }
-
-        lastBatch.push(op);
+        lastBatch.operations.push(op);
       } else {
-        var batch = [op];
+        var batch = {
+          operations: [op],
+          selectionBefore: e.selection
+        };
         undos.push(batch);
       }
 
@@ -201,9 +209,7 @@ var withHistory = function withHistory(editor) {
         undos.shift();
       }
 
-      if (shouldClear(op)) {
-        history.redos = [];
-      }
+      history.redos = [];
     }
 
     apply(op);
@@ -216,10 +222,6 @@ var withHistory = function withHistory(editor) {
  */
 
 var shouldMerge = function shouldMerge(op, prev) {
-  if (op.type === 'set_selection') {
-    return true;
-  }
-
   if (prev && op.type === 'insert_text' && prev.type === 'insert_text' && op.offset === prev.offset + prev.text.length && slate.Path.equals(op.path, prev.path)) {
     return true;
   }
@@ -236,30 +238,6 @@ var shouldMerge = function shouldMerge(op, prev) {
 
 
 var shouldSave = function shouldSave(op, prev) {
-  if (op.type === 'set_selection' && (op.properties == null || op.newProperties == null)) {
-    return false;
-  }
-
-  return true;
-};
-/**
- * Check whether an operation should overwrite the previous one.
- */
-
-
-var shouldOverwrite = function shouldOverwrite(op, prev) {
-  if (prev && op.type === 'set_selection' && prev.type === 'set_selection') {
-    return true;
-  }
-
-  return false;
-};
-/**
- * Check whether an operation should clear the redos stack.
- */
-
-
-var shouldClear = function shouldClear(op) {
   if (op.type === 'set_selection') {
     return false;
   }

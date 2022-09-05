@@ -8,6 +8,7 @@ import DOMText = globalThis.Text;
 import DOMRange = globalThis.Range;
 import DOMSelection = globalThis.Selection;
 import DOMStaticRange = globalThis.StaticRange;
+import { ReactEditor } from '../plugin/react-editor';
 export { DOMNode, DOMComment, DOMElement, DOMText, DOMRange, DOMSelection, DOMStaticRange, };
 declare global {
     interface Window {
@@ -76,4 +77,8 @@ export declare const getSlateFragmentAttribute: (dataTransfer: DataTransfer) => 
  * and append it to the DataTransfer object
  */
 export declare const getClipboardData: (dataTransfer: DataTransfer) => DataTransfer;
+/**
+ * Check whether a mutation originates from a editable element inside the editor.
+ */
+export declare const isTrackedMutation: (editor: ReactEditor, mutation: MutationRecord, batch: MutationRecord[]) => boolean;
 //# sourceMappingURL=dom.d.ts.map

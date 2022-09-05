@@ -39,6 +39,7 @@ var createEditor = () => {
     marks: null,
     isInline: () => false,
     isVoid: () => false,
+    markableVoid: () => false,
     onChange: () => {},
     apply: op => {
       for (var ref of Editor.pathRefs(editor)) {
@@ -82,7 +83,7 @@ var createEditor = () => {
         dirtyPathKeys = oldDirtyPathKeys;
       }
 
-      var newDirtyPaths = getDirtyPaths(op);
+      var newDirtyPaths = editor.getDirtyPaths(op);
 
       for (var _path of newDirtyPaths) {
         add(_path);
@@ -109,16 +110,39 @@ var createEditor = () => {
     },
     addMark: (key, value) => {
       var {
-        selection
+        selection,
+        markableVoid
       } = editor;
 
       if (selection) {
-        if (Range.isExpanded(selection)) {
+        var match = (node, path) => {
+          if (!Text.isText(node)) {
+            return false; // marks can only be applied to text
+          }
+
+          var [parentNode, parentPath] = Editor.parent(editor, path);
+          return !editor.isVoid(parentNode) || editor.markableVoid(parentNode);
+        };
+
+        var expandedSelection = Range.isExpanded(selection);
+        var markAcceptingVoidSelected = false;
+
+        if (!expandedSelection) {
+          var [selectedNode, selectedPath] = Editor.node(editor, selection);
+
+          if (selectedNode && match(selectedNode, selectedPath)) {
+            var [parentNode] = Editor.parent(editor, selectedPath);
+            markAcceptingVoidSelected = parentNode && editor.markableVoid(parentNode);
+          }
+        }
+
+        if (expandedSelection || markAcceptingVoidSelected) {
           Transforms.setNodes(editor, {
             [key]: value
           }, {
-            match: Text.isText,
-            split: true
+            match,
+            split: true,
+            voids: true
           });
         } else {
           var marks = _objectSpread$9(_objectSpread$9({}, Editor.marks(editor) || {}), {}, {
@@ -204,6 +228,7 @@ var createEditor = () => {
       if (selection) {
         if (marks) {
           var node = _objectSpread$9({
+            type: 'text',
             value
           }, marks);
 
@@ -317,10 +342,32 @@ var createEditor = () => {
       } = editor;
 
       if (selection) {
-        if (Range.isExpanded(selection)) {
+        var match = (node, path) => {
+          if (!Text.isText(node)) {
+            return false; // marks can only be applied to text
+          }
+
+          var [parentNode, parentPath] = Editor.parent(editor, path);
+          return !editor.isVoid(parentNode) || editor.markableVoid(parentNode);
+        };
+
+        var expandedSelection = Range.isExpanded(selection);
+        var markAcceptingVoidSelected = false;
+
+        if (!expandedSelection) {
+          var [selectedNode, selectedPath] = Editor.node(editor, selection);
+
+          if (selectedNode && match(selectedNode, selectedPath)) {
+            var [parentNode] = Editor.parent(editor, selectedPath);
+            markAcceptingVoidSelected = parentNode && editor.markableVoid(parentNode);
+          }
+        }
+
+        if (expandedSelection || markAcceptingVoidSelected) {
           Transforms.unsetNodes(editor, key, {
-            match: Text.isText,
-            split: true
+            match,
+            split: true,
+            voids: true
           });
         } else {
           var marks = _objectSpread$9({}, Editor.marks(editor) || {});
@@ -334,109 +381,109 @@ var createEditor = () => {
           }
         }
       }
+    },
+
+    /**
+     * Get the "dirty" paths generated from an operation.
+     */
+    getDirtyPaths: op => {
+      switch (op.type) {
+        case 'insert_text':
+        case 'remove_text':
+        case 'set_node':
+          {
+            var {
+              path
+            } = op;
+            return Path.levels(path);
+          }
+
+        case 'insert_node':
+          {
+            var {
+              node,
+              path: _path2
+            } = op;
+            var levels = Path.levels(_path2);
+            var descendants = Text.isText(node) ? [] : Array.from(Node.nodes(node), _ref3 => {
+              var [, p] = _ref3;
+              return _path2.concat(p);
+            });
+            return [...levels, ...descendants];
+          }
+
+        case 'merge_node':
+          {
+            var {
+              path: _path3
+            } = op;
+            var ancestors = Path.ancestors(_path3);
+            var previousPath = Path.previous(_path3);
+            return [...ancestors, previousPath];
+          }
+
+        case 'move_node':
+          {
+            var {
+              path: _path4,
+              newPath
+            } = op;
+
+            if (Path.equals(_path4, newPath)) {
+              return [];
+            }
+
+            var oldAncestors = [];
+            var newAncestors = [];
+
+            for (var ancestor of Path.ancestors(_path4)) {
+              var p = Path.transform(ancestor, op);
+              oldAncestors.push(p);
+            }
+
+            for (var _ancestor of Path.ancestors(newPath)) {
+              var _p = Path.transform(_ancestor, op);
+
+              newAncestors.push(_p);
+            }
+
+            var newParent = newAncestors[newAncestors.length - 1];
+            var newIndex = newPath[newPath.length - 1];
+            var resultPath = newParent.concat(newIndex);
+            return [...oldAncestors, ...newAncestors, resultPath];
+          }
+
+        case 'remove_node':
+          {
+            var {
+              path: _path5
+            } = op;
+
+            var _ancestors = Path.ancestors(_path5);
+
+            return [..._ancestors];
+          }
+
+        case 'split_node':
+          {
+            var {
+              path: _path6
+            } = op;
+
+            var _levels = Path.levels(_path6);
+
+            var nextPath = Path.next(_path6);
+            return [..._levels, nextPath];
+          }
+
+        default:
+          {
+            return [];
+          }
+      }
     }
   };
   return editor;
-};
-/**
- * Get the "dirty" paths generated from an operation.
- */
-
-var getDirtyPaths = op => {
-  switch (op.type) {
-    case 'insert_text':
-    case 'remove_text':
-    case 'set_node':
-      {
-        var {
-          path
-        } = op;
-        return Path.levels(path);
-      }
-
-    case 'insert_node':
-      {
-        var {
-          node,
-          path: _path2
-        } = op;
-        var levels = Path.levels(_path2);
-        var descendants = Text.isText(node) ? [] : Array.from(Node.nodes(node), _ref3 => {
-          var [, p] = _ref3;
-          return _path2.concat(p);
-        });
-        return [...levels, ...descendants];
-      }
-
-    case 'merge_node':
-      {
-        var {
-          path: _path3
-        } = op;
-        var ancestors = Path.ancestors(_path3);
-        var previousPath = Path.previous(_path3);
-        return [...ancestors, previousPath];
-      }
-
-    case 'move_node':
-      {
-        var {
-          path: _path4,
-          newPath
-        } = op;
-
-        if (Path.equals(_path4, newPath)) {
-          return [];
-        }
-
-        var oldAncestors = [];
-        var newAncestors = [];
-
-        for (var ancestor of Path.ancestors(_path4)) {
-          var p = Path.transform(ancestor, op);
-          oldAncestors.push(p);
-        }
-
-        for (var _ancestor of Path.ancestors(newPath)) {
-          var _p = Path.transform(_ancestor, op);
-
-          newAncestors.push(_p);
-        }
-
-        var newParent = newAncestors[newAncestors.length - 1];
-        var newIndex = newPath[newPath.length - 1];
-        var resultPath = newParent.concat(newIndex);
-        return [...oldAncestors, ...newAncestors, resultPath];
-      }
-
-    case 'remove_node':
-      {
-        var {
-          path: _path5
-        } = op;
-
-        var _ancestors = Path.ancestors(_path5);
-
-        return [..._ancestors];
-      }
-
-    case 'split_node':
-      {
-        var {
-          path: _path6
-        } = op;
-
-        var _levels = Path.levels(_path6);
-
-        var nextPath = Path.next(_path6);
-        return [..._levels, nextPath];
-      }
-
-    default:
-      {
-        return [];
-      }
-  }
 };
 
 function _objectWithoutPropertiesLoose(source, excluded) {
@@ -775,7 +822,8 @@ var endsWithOddNumberOfRIs = str => {
 
 var isElement = value => {
   return isPlainObject(value) && Node.isNodeList(value.children) && !Editor.isEditor(value);
-};
+}; // eslint-disable-next-line no-redeclare
+
 
 var Element = {
   /**
@@ -841,7 +889,8 @@ var _excluded$4 = ["value"],
 function ownKeys$8(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) { symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); } keys.push.apply(keys, symbols); } return keys; }
 
 function _objectSpread$8(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$8(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$8(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
-var IS_EDITOR_CACHE = new WeakMap();
+var IS_EDITOR_CACHE = new WeakMap(); // eslint-disable-next-line no-redeclare
+
 var Editor = {
   /**
    * Get the ancestor above a location in the document.
@@ -868,8 +917,16 @@ var Editor = {
       match,
       reverse
     })) {
-      if (!Text.isText(n) && !Path.equals(path, p)) {
-        return [n, p];
+      if (Text.isText(n)) return;
+
+      if (Range.isRange(at)) {
+        if (Path.isAncestor(p, at.anchor.path) && Path.isAncestor(p, at.focus.path)) {
+          return [n, p];
+        }
+      } else {
+        if (!Path.equals(path, p)) {
+          return [n, p];
+        }
       }
     }
   },
@@ -1102,14 +1159,17 @@ var Editor = {
    * Check if a value is an `Editor` object.
    */
   isEditor(value) {
-    if (!isPlainObject(value)) return false;
     var cachedIsEditor = IS_EDITOR_CACHE.get(value);
 
     if (cachedIsEditor !== undefined) {
       return cachedIsEditor;
     }
 
-    var isEditor = typeof value.addMark === 'function' && typeof value.apply === 'function' && typeof value.deleteBackward === 'function' && typeof value.deleteForward === 'function' && typeof value.deleteFragment === 'function' && typeof value.insertBreak === 'function' && typeof value.insertSoftBreak === 'function' && typeof value.insertFragment === 'function' && typeof value.insertNode === 'function' && typeof value.insertText === 'function' && typeof value.isInline === 'function' && typeof value.isVoid === 'function' && typeof value.normalizeNode === 'function' && typeof value.onChange === 'function' && typeof value.removeMark === 'function' && (value.marks === null || isPlainObject(value.marks)) && (value.selection === null || Range.isRange(value.selection)) && Node.isNodeList(value.children) && Operation.isOperationList(value.operations);
+    if (!isPlainObject(value)) {
+      return false;
+    }
+
+    var isEditor = typeof value.addMark === 'function' && typeof value.apply === 'function' && typeof value.deleteBackward === 'function' && typeof value.deleteForward === 'function' && typeof value.deleteFragment === 'function' && typeof value.insertBreak === 'function' && typeof value.insertSoftBreak === 'function' && typeof value.insertFragment === 'function' && typeof value.insertNode === 'function' && typeof value.insertText === 'function' && typeof value.isInline === 'function' && typeof value.isVoid === 'function' && typeof value.normalizeNode === 'function' && typeof value.onChange === 'function' && typeof value.removeMark === 'function' && typeof value.getDirtyPaths === 'function' && (value.marks === null || isPlainObject(value.marks)) && (value.selection === null || Range.isRange(value.selection)) && Node.isNodeList(value.children) && Operation.isOperationList(value.operations);
     IS_EDITOR_CACHE.set(value, isEditor);
     return isEditor;
   },
@@ -1287,16 +1347,22 @@ var Editor = {
         at: path,
         match: Text.isText
       });
-      var block = Editor.above(editor, {
-        match: n => Editor.isBlock(editor, n)
+      var markedVoid = Editor.above(editor, {
+        match: n => Editor.isVoid(editor, n) && editor.markableVoid(n)
       });
 
-      if (prev && block) {
-        var [prevNode, prevPath] = prev;
-        var [, blockPath] = block;
+      if (!markedVoid) {
+        var block = Editor.above(editor, {
+          match: n => Editor.isBlock(editor, n)
+        });
 
-        if (Path.isAncestor(blockPath, prevPath)) {
-          node = prevNode;
+        if (prev && block) {
+          var [prevNode, prevPath] = prev;
+          var [, blockPath] = block;
+
+          if (Path.isAncestor(blockPath, prevPath)) {
+            node = prevNode;
+          }
         }
       }
     }
@@ -2117,13 +2183,14 @@ var Editor = {
     } = options;
     var [start, end] = Range.edges(range); // PERF: exit early if we can guarantee that the range isn't hanging.
 
-    if (start.offset !== 0 || end.offset !== 0 || Range.isCollapsed(range)) {
+    if (start.offset !== 0 || end.offset !== 0 || Range.isCollapsed(range) || Path.hasPrevious(end.path)) {
       return range;
     }
 
     var endBlock = Editor.above(editor, {
       at: end,
-      match: n => Editor.isBlock(editor, n)
+      match: n => Editor.isBlock(editor, n),
+      voids
     });
     var blockPath = endBlock ? endBlock[1] : [];
     var first = Editor.start(editor, start);
@@ -2195,7 +2262,8 @@ var Location = {
     return Path.isPath(value) || Point.isPoint(value) || Range.isRange(value);
   }
 
-};
+}; // eslint-disable-next-line no-redeclare
+
 var Span = {
   /**
    * Check if a value implements the `Span` interface.
@@ -2208,7 +2276,8 @@ var Span = {
 
 var _excluded$3 = ["children"],
     _excluded2$2 = ["value"];
-var IS_NODE_LIST_CACHE = new WeakMap();
+var IS_NODE_LIST_CACHE = new WeakMap(); // eslint-disable-next-line no-redeclare
+
 var Node = {
   /**
    * Get the node at a specific path, asserting that it's an ancestor node.
@@ -2217,7 +2286,7 @@ var Node = {
     var node = Node.get(root, path);
 
     if (Text.isText(node)) {
-      throw new Error("Cannot get the ancestor node at path [".concat(path, "] because it refers to a text node instead: ").concat(node));
+      throw new Error("Cannot get the ancestor node at path [".concat(path, "] because it refers to a text node instead: ").concat(Scrubber.stringify(node)));
     }
 
     return node;
@@ -2244,13 +2313,13 @@ var Node = {
    */
   child(root, index) {
     if (Text.isText(root)) {
-      throw new Error("Cannot get the child of a text node: ".concat(JSON.stringify(root)));
+      throw new Error("Cannot get the child of a text node: ".concat(Scrubber.stringify(root)));
     }
 
     var c = root.children[index];
 
     if (c == null) {
-      throw new Error("Cannot get child at index `".concat(index, "` in node: ").concat(JSON.stringify(root)));
+      throw new Error("Cannot get child at index `".concat(index, "` in node: ").concat(Scrubber.stringify(root)));
     }
 
     return c;
@@ -2294,7 +2363,7 @@ var Node = {
     var node = Node.get(root, path);
 
     if (Editor.isEditor(node)) {
-      throw new Error("Cannot get the descendant node at path [".concat(path, "] because it refers to the root editor node instead: ").concat(node));
+      throw new Error("Cannot get the descendant node at path [".concat(path, "] because it refers to the root editor node instead: ").concat(Scrubber.stringify(node)));
     }
 
     return node;
@@ -2369,7 +2438,7 @@ var Node = {
    */
   fragment(root, range) {
     if (Text.isText(root)) {
-      throw new Error("Cannot get a fragment starting from a root text node: ".concat(JSON.stringify(root)));
+      throw new Error("Cannot get a fragment starting from a root text node: ".concat(Scrubber.stringify(root)));
     }
 
     var newRoot = produce({
@@ -2421,7 +2490,7 @@ var Node = {
       var p = path[i];
 
       if (Text.isText(node) || !node.children[p]) {
-        throw new Error("Cannot find a descendant at path [".concat(path, "] in node: ").concat(JSON.stringify(root)));
+        throw new Error("Cannot find a descendant at path [".concat(path, "] in node: ").concat(Scrubber.stringify(root)));
       }
 
       node = node.children[p];
@@ -2502,7 +2571,7 @@ var Node = {
     var node = Node.get(root, path);
 
     if (!Text.isText(node)) {
-      throw new Error("Cannot get the leaf node at path [".concat(path, "] because it refers to a non-leaf node: ").concat(node));
+      throw new Error("Cannot get the leaf node at path [".concat(path, "] because it refers to a non-leaf node: ").concat(Scrubber.stringify(node)));
     }
 
     return node;
@@ -2651,6 +2720,7 @@ var Node = {
 function ownKeys$7(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) { symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); } keys.push.apply(keys, symbols); } return keys; }
 
 function _objectSpread$7(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$7(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$7(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
+
 var Operation = {
   /**
    * Check of a value is a `NodeOperation` object.
@@ -2846,6 +2916,7 @@ var Operation = {
 
 };
 
+// eslint-disable-next-line no-redeclare
 var Path = {
   /**
    * Get a list of ancestor paths for a given path.
@@ -3129,131 +3200,130 @@ var Path = {
    */
   transform(path, operation) {
     var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
-    return produce(path, p => {
-      var {
-        affinity = 'forward'
-      } = options; // PERF: Exit early if the operation is guaranteed not to have an effect.
+    if (!path) return null; // PERF: use destructing instead of immer
 
-      if (!path || (path === null || path === void 0 ? void 0 : path.length) === 0) {
-        return;
-      }
+    var p = [...path];
+    var {
+      affinity = 'forward'
+    } = options; // PERF: Exit early if the operation is guaranteed not to have an effect.
 
-      if (p === null) {
-        return null;
-      }
+    if (path.length === 0) {
+      return p;
+    }
 
-      switch (operation.type) {
-        case 'insert_node':
-          {
-            var {
-              path: op
-            } = operation;
+    switch (operation.type) {
+      case 'insert_node':
+        {
+          var {
+            path: op
+          } = operation;
 
-            if (Path.equals(op, p) || Path.endsBefore(op, p) || Path.isAncestor(op, p)) {
-              p[op.length - 1] += 1;
-            }
-
-            break;
+          if (Path.equals(op, p) || Path.endsBefore(op, p) || Path.isAncestor(op, p)) {
+            p[op.length - 1] += 1;
           }
 
-        case 'remove_node':
-          {
-            var {
-              path: _op
-            } = operation;
+          break;
+        }
 
-            if (Path.equals(_op, p) || Path.isAncestor(_op, p)) {
+      case 'remove_node':
+        {
+          var {
+            path: _op
+          } = operation;
+
+          if (Path.equals(_op, p) || Path.isAncestor(_op, p)) {
+            return null;
+          } else if (Path.endsBefore(_op, p)) {
+            p[_op.length - 1] -= 1;
+          }
+
+          break;
+        }
+
+      case 'merge_node':
+        {
+          var {
+            path: _op2,
+            position
+          } = operation;
+
+          if (Path.equals(_op2, p) || Path.endsBefore(_op2, p)) {
+            p[_op2.length - 1] -= 1;
+          } else if (Path.isAncestor(_op2, p)) {
+            p[_op2.length - 1] -= 1;
+            p[_op2.length] += position;
+          }
+
+          break;
+        }
+
+      case 'split_node':
+        {
+          var {
+            path: _op3,
+            position: _position
+          } = operation;
+
+          if (Path.equals(_op3, p)) {
+            if (affinity === 'forward') {
+              p[p.length - 1] += 1;
+            } else if (affinity === 'backward') ; else {
               return null;
-            } else if (Path.endsBefore(_op, p)) {
-              p[_op.length - 1] -= 1;
             }
-
-            break;
+          } else if (Path.endsBefore(_op3, p)) {
+            p[_op3.length - 1] += 1;
+          } else if (Path.isAncestor(_op3, p) && path[_op3.length] >= _position) {
+            p[_op3.length - 1] += 1;
+            p[_op3.length] -= _position;
           }
 
-        case 'merge_node':
-          {
-            var {
-              path: _op2,
-              position
-            } = operation;
+          break;
+        }
 
-            if (Path.equals(_op2, p) || Path.endsBefore(_op2, p)) {
-              p[_op2.length - 1] -= 1;
-            } else if (Path.isAncestor(_op2, p)) {
-              p[_op2.length - 1] -= 1;
-              p[_op2.length] += position;
-            }
+      case 'move_node':
+        {
+          var {
+            path: _op4,
+            newPath: onp
+          } = operation; // If the old and new path are the same, it's a no-op.
 
-            break;
+          if (Path.equals(_op4, onp)) {
+            return p;
           }
 
-        case 'split_node':
-          {
-            var {
-              path: _op3,
-              position: _position
-            } = operation;
+          if (Path.isAncestor(_op4, p) || Path.equals(_op4, p)) {
+            var copy = onp.slice();
 
-            if (Path.equals(_op3, p)) {
-              if (affinity === 'forward') {
-                p[p.length - 1] += 1;
-              } else if (affinity === 'backward') ; else {
-                return null;
-              }
-            } else if (Path.endsBefore(_op3, p)) {
-              p[_op3.length - 1] += 1;
-            } else if (Path.isAncestor(_op3, p) && path[_op3.length] >= _position) {
-              p[_op3.length - 1] += 1;
-              p[_op3.length] -= _position;
+            if (Path.endsBefore(_op4, onp) && _op4.length < onp.length) {
+              copy[_op4.length - 1] -= 1;
             }
 
-            break;
-          }
-
-        case 'move_node':
-          {
-            var {
-              path: _op4,
-              newPath: onp
-            } = operation; // If the old and new path are the same, it's a no-op.
-
-            if (Path.equals(_op4, onp)) {
-              return;
+            return copy.concat(p.slice(_op4.length));
+          } else if (Path.isSibling(_op4, onp) && (Path.isAncestor(onp, p) || Path.equals(onp, p))) {
+            if (Path.endsBefore(_op4, p)) {
+              p[_op4.length - 1] -= 1;
+            } else {
+              p[_op4.length - 1] += 1;
             }
-
-            if (Path.isAncestor(_op4, p) || Path.equals(_op4, p)) {
-              var copy = onp.slice();
-
-              if (Path.endsBefore(_op4, onp) && _op4.length < onp.length) {
-                copy[_op4.length - 1] -= 1;
-              }
-
-              return copy.concat(p.slice(_op4.length));
-            } else if (Path.isSibling(_op4, onp) && (Path.isAncestor(onp, p) || Path.equals(onp, p))) {
-              if (Path.endsBefore(_op4, p)) {
-                p[_op4.length - 1] -= 1;
-              } else {
-                p[_op4.length - 1] += 1;
-              }
-            } else if (Path.endsBefore(onp, p) || Path.equals(onp, p) || Path.isAncestor(onp, p)) {
-              if (Path.endsBefore(_op4, p)) {
-                p[_op4.length - 1] -= 1;
-              }
-
-              p[onp.length - 1] += 1;
-            } else if (Path.endsBefore(_op4, p)) {
-              if (Path.equals(onp, p)) {
-                p[onp.length - 1] += 1;
-              }
-
+          } else if (Path.endsBefore(onp, p) || Path.equals(onp, p) || Path.isAncestor(onp, p)) {
+            if (Path.endsBefore(_op4, p)) {
               p[_op4.length - 1] -= 1;
             }
 
-            break;
+            p[onp.length - 1] += 1;
+          } else if (Path.endsBefore(_op4, p)) {
+            if (Path.equals(onp, p)) {
+              p[onp.length - 1] += 1;
+            }
+
+            p[_op4.length - 1] -= 1;
           }
-      }
-    });
+
+          break;
+        }
+    }
+
+    return p;
   }
 
 };
@@ -3287,6 +3357,7 @@ var PathRef = {
 function ownKeys$6(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) { symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); } keys.push.apply(keys, symbols); } return keys; }
 
 function _objectSpread$6(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$6(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$6(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
+
 var Point = {
   /**
    * Compare a point to another, returning an integer indicating whether the
@@ -3451,6 +3522,7 @@ var _excluded$2 = ["anchor", "focus"];
 function ownKeys$5(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) { symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); } keys.push.apply(keys, symbols); } return keys; }
 
 function _objectSpread$5(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$5(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$5(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
+
 var Range = {
   /**
    * Get the start and end points of a range, in the order in which they appear
@@ -3684,6 +3756,35 @@ var RangeRef = {
 
 };
 
+var _scrubber = undefined;
+/**
+ * This interface implements a stringify() function, which is used by Slate
+ * internally when generating exceptions containing end user data. Developers
+ * using Slate may call Scrubber.setScrubber() to alter the behavior of this
+ * stringify() function.
+ *
+ * For example, to prevent the cleartext logging of 'text' fields within Nodes:
+ *
+ *    import { Scrubber } from 'slate';
+ *    Scrubber.setScrubber((key, val) => {
+ *      if (key === 'text') return '...scrubbed...'
+ *      return val
+ *    });
+ *
+ */
+// eslint-disable-next-line no-redeclare
+
+var Scrubber = {
+  setScrubber(scrubber) {
+    _scrubber = scrubber;
+  },
+
+  stringify(value) {
+    return JSON.stringify(value, _scrubber);
+  }
+
+};
+
 /*
   Custom deep equal comparison for Slate nodes.
 
@@ -3734,6 +3835,7 @@ var _excluded$1 = ["text"],
 function ownKeys$4(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) { symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); } keys.push.apply(keys, symbols); } return keys; }
 
 function _objectSpread$4(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$4(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$4(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
+
 var Text = {
   /**
    * Check if two text nodes are equal.
@@ -3808,23 +3910,25 @@ var Text = {
 
       var [start, end] = Range.edges(dec);
       var next = [];
-      var o = 0;
+      var leafEnd = 0;
+      var decorationStart = start.offset;
+      var decorationEnd = end.offset;
 
       for (var leaf of leaves) {
         var {
           length
         } = leaf.value;
-        var offset = o;
-        o += length; // If the range encompases the entire leaf, add the range.
+        var leafStart = leafEnd;
+        leafEnd += length; // If the range encompasses the entire leaf, add the range.
 
-        if (start.offset <= offset && end.offset >= o) {
+        if (decorationStart <= leafStart && leafEnd <= decorationEnd) {
           Object.assign(leaf, rest);
           next.push(leaf);
           continue;
         } // If the range expanded and match the leaf, or starts after, or ends before it, continue.
 
 
-        if (start.offset !== end.offset && (start.offset === o || end.offset === offset) || start.offset > o || end.offset < offset || end.offset === offset && offset !== 0) {
+        if (decorationStart !== decorationEnd && (decorationStart === leafEnd || decorationEnd === leafStart) || decorationStart > leafEnd || decorationEnd < leafStart || decorationEnd === leafStart && leafStart !== 0) {
           next.push(leaf);
           continue;
         } // Otherwise we need to split the leaf, at the start, end, or both,
@@ -3836,21 +3940,21 @@ var Text = {
         var before = void 0;
         var after = void 0;
 
-        if (end.offset < o) {
-          var off = end.offset - offset;
+        if (decorationEnd < leafEnd) {
+          var off = decorationEnd - leafStart;
           after = _objectSpread$4(_objectSpread$4({}, middle), {}, {
-            value: middle.value.slice(off)
+            text: middle.value.slice(off)
           });
           middle = _objectSpread$4(_objectSpread$4({}, middle), {}, {
             value: middle.value.slice(0, off)
           });
         }
 
-        if (start.offset > offset) {
-          var _off = start.offset - offset;
+        if (decorationStart > leafStart) {
+          var _off = decorationStart - leafStart;
 
           before = _objectSpread$4(_objectSpread$4({}, middle), {}, {
-            value: middle.value.slice(0, _off)
+            text: middle.value.slice(0, _off)
           });
           middle = _objectSpread$4(_objectSpread$4({}, middle), {}, {
             value: middle.value.slice(_off)
@@ -3954,7 +4058,7 @@ var applyToDraft = (editor, selection, op) => {
         } else if (!Text.isText(_node2) && !Text.isText(prev)) {
           prev.children.push(..._node2.children);
         } else {
-          throw new Error("Cannot apply a \"merge_node\" operation at path [".concat(_path2, "] to nodes of different interfaces: ").concat(_node2, " ").concat(prev));
+          throw new Error("Cannot apply a \"merge_node\" operation at path [".concat(_path2, "] to nodes of different interfaces: ").concat(Scrubber.stringify(_node2), " ").concat(Scrubber.stringify(prev)));
         }
 
         _parent.children.splice(_index, 1);
@@ -4140,7 +4244,7 @@ var applyToDraft = (editor, selection, op) => {
         } else {
           if (selection == null) {
             if (!Range.isRange(_newProperties)) {
-              throw new Error("Cannot apply an incomplete \"set_selection\" operation properties ".concat(JSON.stringify(_newProperties), " when there is no current selection."));
+              throw new Error("Cannot apply an incomplete \"set_selection\" operation properties ".concat(Scrubber.stringify(_newProperties), " when there is no current selection."));
             }
 
             selection = _objectSpread$3({}, _newProperties);
@@ -4217,7 +4321,8 @@ var applyToDraft = (editor, selection, op) => {
   }
 
   return selection;
-};
+}; // eslint-disable-next-line no-redeclare
+
 
 var GeneralTransforms = {
   /**
@@ -4248,6 +4353,7 @@ var _excluded = ["value"],
 function ownKeys$2(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) { symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); } keys.push.apply(keys, symbols); } return keys; }
 
 function _objectSpread$2(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$2(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$2(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
+
 var NodeTransforms = {
   /**
    * Insert nodes at a specific location in the Editor.
@@ -4296,7 +4402,9 @@ var NodeTransforms = {
 
       if (Range.isRange(at)) {
         if (!hanging) {
-          at = Editor.unhangRange(editor, at);
+          at = Editor.unhangRange(editor, at, {
+            voids
+          });
         }
 
         if (Range.isCollapsed(at)) {
@@ -4504,7 +4612,9 @@ var NodeTransforms = {
       }
 
       if (!hanging && Range.isRange(at)) {
-        at = Editor.unhangRange(editor, at);
+        at = Editor.unhangRange(editor, at, {
+          voids
+        });
       }
 
       if (Range.isRange(at)) {
@@ -4580,7 +4690,7 @@ var NodeTransforms = {
         position = prevNode.children.length;
         properties = rest;
       } else {
-        throw new Error("Cannot merge the node at path [".concat(path, "] with the previous sibling because it is not the same kind: ").concat(JSON.stringify(node), " ").concat(JSON.stringify(prevNode)));
+        throw new Error("Cannot merge the node at path [".concat(path, "] with the previous sibling because it is not the same kind: ").concat(Scrubber.stringify(node), " ").concat(Scrubber.stringify(prevNode)));
       } // If the node isn't already the next sibling of the previous node, move
       // it so that it is before merging.
 
@@ -4711,7 +4821,9 @@ var NodeTransforms = {
       }
 
       if (!hanging && Range.isRange(at)) {
-        at = Editor.unhangRange(editor, at);
+        at = Editor.unhangRange(editor, at, {
+          voids
+        });
       }
 
       var depths = Editor.nodes(editor, {
@@ -4768,7 +4880,9 @@ var NodeTransforms = {
       }
 
       if (!hanging && Range.isRange(at)) {
-        at = Editor.unhangRange(editor, at);
+        at = Editor.unhangRange(editor, at, {
+          voids
+        });
       }
 
       if (split && Range.isRange(at)) {
@@ -5246,6 +5360,7 @@ var matchPath = (editor, path) => {
 function ownKeys$1(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) { symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); } keys.push.apply(keys, symbols); } return keys; }
 
 function _objectSpread$1(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$1(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$1(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
+
 var SelectionTransforms = {
   /**
    * Collapse the selection.
@@ -5364,7 +5479,7 @@ var SelectionTransforms = {
     }
 
     if (!Range.isRange(target)) {
-      throw new Error("When setting the selection and the current selection is `null` you must provide at least an `anchor` and `focus`, but you passed: ".concat(JSON.stringify(target)));
+      throw new Error("When setting the selection and the current selection is `null` you must provide at least an `anchor` and `focus`, but you passed: ".concat(Scrubber.stringify(target)));
     }
 
     editor.apply({
@@ -5462,7 +5577,10 @@ var TextTransforms = {
         return;
       }
 
+      var isCollapsed = false;
+
       if (Range.isRange(at) && Range.isCollapsed(at)) {
+        isCollapsed = true;
         at = at.anchor;
       }
 
@@ -5577,6 +5695,7 @@ var TextTransforms = {
       });
       var startRef = Editor.pointRef(editor, start);
       var endRef = Editor.pointRef(editor, end);
+      var removedText = '';
 
       if (!isSingleText && !startVoid) {
         var _point = startRef.current;
@@ -5590,40 +5709,42 @@ var TextTransforms = {
 
         var text = _node.value.slice(offset);
 
-        if (text.length > 0) editor.apply({
-          type: 'remove_text',
-          path: _path,
-          offset,
-          text
-        });
+        if (text.length > 0) {
+          editor.apply({
+            type: 'remove_text',
+            path: _path,
+            offset,
+            text
+          });
+          removedText = text;
+        }
       }
 
-      for (var pathRef of pathRefs) {
-        var _path2 = pathRef.unref();
-
-        Transforms.removeNodes(editor, {
-          at: _path2,
-          voids
-        });
-      }
+      pathRefs.reverse().map(r => r.unref()).filter(r => r !== null).forEach(p => Transforms.removeNodes(editor, {
+        at: p,
+        voids
+      }));
 
       if (!endVoid) {
         var _point2 = endRef.current;
         var [_node2] = Editor.leaf(editor, _point2);
         var {
-          path: _path3
+          path: _path2
         } = _point2;
 
         var _offset = isSingleText ? start.offset : 0;
 
         var _text = _node2.value.slice(_offset, end.offset);
 
-        if (_text.length > 0) editor.apply({
-          type: 'remove_text',
-          path: _path3,
-          offset: _offset,
-          text: _text
-        });
+        if (_text.length > 0) {
+          editor.apply({
+            type: 'remove_text',
+            path: _path2,
+            offset: _offset,
+            text: _text
+          });
+          removedText = _text;
+        }
       }
 
       if (!isSingleText && isAcrossBlocks && endRef.current && startRef.current) {
@@ -5632,6 +5753,13 @@ var TextTransforms = {
           hanging: true,
           voids
         });
+      } // For Thai script, deleting N character(s) backward should delete
+      // N code point(s) instead of an entire grapheme cluster.
+      // Therefore, the remaining code points should be inserted back.
+
+
+      if (isCollapsed && reverse && unit === 'character' && removedText.length > 1 && removedText.match(/[\u0E00-\u0E7F]+/)) {
+        Transforms.insertText(editor, removedText.slice(0, removedText.length - distance));
       }
 
       var startUnref = startRef.unref();
@@ -5666,7 +5794,9 @@ var TextTransforms = {
         return;
       } else if (Range.isRange(at)) {
         if (!hanging) {
-          at = Editor.unhangRange(editor, at);
+          at = Editor.unhangRange(editor, at, {
+            voids
+          });
         }
 
         if (Range.isCollapsed(at)) {
@@ -5796,13 +5926,13 @@ var TextTransforms = {
       var [, inlinePath] = inlineMatch;
       var isInlineStart = Editor.isStart(editor, at, inlinePath);
       var isInlineEnd = Editor.isEnd(editor, at, inlinePath);
-      var middleRef = Editor.pathRef(editor, isBlockEnd ? Path.next(blockPath) : blockPath);
+      var middleRef = Editor.pathRef(editor, isBlockEnd && !ends.length ? Path.next(blockPath) : blockPath);
       var endRef = Editor.pathRef(editor, isInlineEnd ? Path.next(inlinePath) : inlinePath);
-      var blockPathRef = Editor.pathRef(editor, blockPath);
       Transforms.splitNodes(editor, {
         at,
         match: n => hasBlocks ? Editor.isBlock(editor, n) : Text.isText(n) || Editor.isInline(editor, n),
         mode: hasBlocks ? 'lowest' : 'highest',
+        always: hasBlocks && (!isBlockStart || starts.length > 0) && (!isBlockEnd || ends.length > 0),
         voids
       });
       var startRef = Editor.pathRef(editor, !isInlineStart || isInlineStart && isInlineEnd ? Path.next(inlinePath) : inlinePath);
@@ -5813,9 +5943,9 @@ var TextTransforms = {
         voids
       });
 
-      if (isBlockEmpty && middles.length) {
+      if (isBlockEmpty && !starts.length && middles.length && !ends.length) {
         Transforms.delete(editor, {
-          at: blockPathRef.unref(),
+          at: blockPath,
           voids
         });
       }
@@ -5836,17 +5966,19 @@ var TextTransforms = {
       if (!options.at) {
         var path;
 
-        if (ends.length > 0) {
+        if (ends.length > 0 && endRef.current) {
           path = Path.previous(endRef.current);
-        } else if (middles.length > 0) {
+        } else if (middles.length > 0 && middleRef.current) {
           path = Path.previous(middleRef.current);
-        } else {
+        } else if (startRef.current) {
           path = Path.previous(startRef.current);
         }
 
-        var _end2 = Editor.end(editor, path);
+        if (path) {
+          var _end2 = Editor.end(editor, path);
 
-        Transforms.select(editor, _end2);
+          Transforms.select(editor, _end2);
+        }
       }
 
       startRef.unref();
@@ -5931,5 +6063,5 @@ function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (O
 function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
 var Transforms = _objectSpread(_objectSpread(_objectSpread(_objectSpread({}, GeneralTransforms), NodeTransforms), SelectionTransforms), TextTransforms);
 
-export { Editor, Element, Location, Node, Operation, Path, PathRef, Point, PointRef, Range, RangeRef, Span, Text, Transforms, createEditor };
+export { Editor, Element, Location, Node, Operation, Path, PathRef, Point, PointRef, Range, RangeRef, Scrubber, Span, Text, Transforms, createEditor };
 //# sourceMappingURL=index.es.js.map
