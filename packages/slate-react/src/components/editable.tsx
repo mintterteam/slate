@@ -20,16 +20,17 @@ import {
   Text,
   Transforms,
 } from 'slate'
-import { ReactEditor } from '../plugin/react-editor'
+import { useAndroidInputManager } from '../hooks/android-input-manager/use-android-input-manager'
 import useChildren from '../hooks/use-children'
 import { DecorateContext } from '../hooks/use-decorate'
 import { useIsomorphicLayoutEffect } from '../hooks/use-isomorphic-layout-effect'
 import { ReadOnlyContext } from '../hooks/use-read-only'
 import { useSlate } from '../hooks/use-slate'
+import { useTrackUserInput } from '../hooks/use-track-user-input'
+import { ReactEditor } from '../plugin/react-editor'
 import { TRIPLE_CLICK } from '../utils/constants'
 import {
   DOMElement,
-  DOMNode,
   DOMRange,
   DOMText,
   getDefaultView,
@@ -67,8 +68,6 @@ import {
   PLACEHOLDER_SYMBOL,
 } from '../utils/weak-maps'
 import { RestoreDOM } from './restore-dom/restore-dom'
-import { useAndroidInputManager } from '../hooks/android-input-manager/use-android-input-manager'
-import { useTrackUserInput } from '../hooks/use-track-user-input'
 
 type DeferredOperation = () => void
 
@@ -136,7 +135,7 @@ export const Editable = (props: EditableProps) => {
     readOnly = false,
     renderElement,
     renderLeaf,
-    renderPlaceholder = props => <DefaultPlaceholder {...props} />,
+    renderPlaceholder = (props) => <DefaultPlaceholder {...props} />,
     scrollSelectionIntoView = defaultScrollSelectionIntoView,
     style = {},
     as: Component = 'div',
@@ -150,7 +149,7 @@ export const Editable = (props: EditableProps) => {
 
   const { onUserInput, receivedUserInput } = useTrackUserInput()
 
-  const [, forceRender] = useReducer(s => s + 1, 0)
+  const [, forceRender] = useReducer((s) => s + 1, 0)
   EDITOR_TO_FORCE_RENDER.set(editor, forceRender)
 
   // Update internal state on each render.
@@ -518,7 +517,7 @@ export const Editable = (props: EditableProps) => {
           ) {
             const block = Editor.above(editor, {
               at: anchor.path,
-              match: n => Editor.isBlock(editor, n),
+              match: (n) => Editor.isBlock(editor, n),
             })
 
             if (block && Node.string(block[0]).includes('\t')) {
@@ -759,7 +758,7 @@ export const Editable = (props: EditableProps) => {
   if (editor.selection && Range.isCollapsed(editor.selection) && marks) {
     const { anchor } = editor.selection
     const leaf = Node.leaf(editor, anchor.path)
-    const { text, ...rest } = leaf
+    const { value, ...rest } = leaf
 
     // While marks isn't a 'complete' text, we can still use loose Text.equals
     // here which only compares marks anyway.
@@ -767,7 +766,7 @@ export const Editable = (props: EditableProps) => {
       state.hasMarkPlaceholder = true
 
       const unset = Object.fromEntries(
-        Object.keys(rest).map(mark => [mark, null])
+        Object.keys(rest).map((mark) => [mark, null])
       )
 
       decorations.push({
@@ -789,7 +788,6 @@ export const Editable = (props: EditableProps) => {
       if (selection) {
         const { anchor } = selection
         const text = Node.leaf(editor, anchor.path)
-
         // While marks isn't a 'complete' text, we can still use loose Text.equals
         // here which only compares marks anyway.
         if (marks && !Text.equals(text, marks as Text, { loose: true })) {
@@ -978,7 +976,7 @@ export const Editable = (props: EditableProps) => {
                     let blockPath = path
                     if (!Editor.isBlock(editor, node)) {
                       const block = Editor.above(editor, {
-                        match: n => Editor.isBlock(editor, n),
+                        match: (n) => Editor.isBlock(editor, n),
                         at: path,
                       })
 
@@ -1041,9 +1039,8 @@ export const Editable = (props: EditableProps) => {
                     !IS_UC_MOBILE &&
                     event.data
                   ) {
-                    const placeholderMarks = EDITOR_TO_PENDING_INSERTION_MARKS.get(
-                      editor
-                    )
+                    const placeholderMarks =
+                      EDITOR_TO_PENDING_INSERTION_MARKS.get(editor)
                     EDITOR_TO_PENDING_INSERTION_MARKS.delete(editor)
 
                     // Ensure we insert text with the marks the user was actually seeing
@@ -1099,7 +1096,7 @@ export const Editable = (props: EditableProps) => {
                       return
                     }
                     const inline = Editor.above(editor, {
-                      match: n => Editor.isInline(editor, n),
+                      match: (n) => Editor.isInline(editor, n),
                       mode: 'highest',
                     })
                     if (inline) {

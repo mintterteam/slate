@@ -199,7 +199,7 @@ export const createEditor = (): Editor => {
 
       if (selection) {
         if (marks) {
-          const node = { value, ...marks }
+          const node: Text = { type: 'text', value, ...marks }
           Transforms.insertNodes(editor, node)
         } else {
           Transforms.insertText(editor, value)

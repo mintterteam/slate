@@ -289,7 +289,7 @@ export function createAndroidInputManager({
     const target = Node.leaf(editor, path)
     const idx = pendingDiffs.findIndex(change => Path.equals(change.path, path))
     if (idx < 0) {
-      const normalized = normalizeStringDiff(target.text, diff)
+      const normalized = normalizeStringDiff(target.value, diff)
       if (normalized) {
         pendingDiffs.push({ path, diff, id: idCounter++ })
       }
@@ -298,7 +298,7 @@ export function createAndroidInputManager({
       return
     }
 
-    const merged = mergeStringDiffs(target.text, pendingDiffs[idx].diff, diff)
+    const merged = mergeStringDiffs(target.value, pendingDiffs[idx].diff, diff)
     if (!merged) {
       pendingDiffs.splice(idx, 1)
       updatePlaceholderVisibility()
@@ -381,7 +381,7 @@ export function createAndroidInputManager({
       const [start, end] = Range.edges(targetRange)
       const leaf = Node.leaf(editor, start.path)
 
-      if (leaf.text.length === start.offset && end.offset === 0) {
+      if (leaf.value.length === start.offset && end.offset === 0) {
         const next = Editor.next(editor, { at: start.path, match: Text.isText })
         if (next && Path.equals(next[1], end.path)) {
           targetRange = { anchor: end, focus: end }
@@ -421,7 +421,7 @@ export function createAndroidInputManager({
         if (Range.isCollapsed(targetRange)) {
           const targetNode = Node.leaf(editor, anchor.path)
 
-          if (anchor.offset < targetNode.text.length) {
+          if (anchor.offset < targetNode.value.length) {
             return storeDiff(anchor.path, {
               text: '',
               start: anchor.offset,

@@ -28,9 +28,9 @@ export function verifyDiffState(editor: Editor, textDiff: TextDiff): boolean {
     return false
   }
 
-  if (diff.start !== node.text.length || diff.text.length === 0) {
+  if (diff.start !== node.value.length || diff.text.length === 0) {
     return (
-      node.text.slice(diff.start, diff.start + diff.text.length) === diff.text
+      node.value.slice(diff.start, diff.start + diff.text.length) === diff.text
     )
   }
 
@@ -40,7 +40,7 @@ export function verifyDiffState(editor: Editor, textDiff: TextDiff): boolean {
   }
 
   const nextNode = Node.get(editor, nextPath)
-  return Text.isText(nextNode) && nextNode.text.startsWith(diff.text)
+  return Text.isText(nextNode) && nextNode.value.startsWith(diff.text)
 }
 
 function applyStringDiff(text: string, ...diffs: StringDiff[]) {
@@ -174,13 +174,13 @@ export function normalizePoint(editor: Editor, point: Point): Point | null {
     return null
   }
 
-  while (offset > leaf.text.length) {
+  while (offset > leaf.value.length) {
     const entry = Editor.next(editor, { at: path, match: Text.isText })
     if (!entry || !Path.isDescendant(entry[1], parentBlock[1])) {
       return null
     }
 
-    offset -= leaf.text.length
+    offset -= leaf.value.length
     leaf = entry[0]
     path = entry[1]
   }

@@ -45,7 +45,7 @@ export type BaseSelection = Range | null
 
 export type Selection = ExtendedType<'Selection', BaseSelection>
 
-export type EditorMarks = Omit<Text, 'value'>
+export type EditorMarks = Omit<Text, 'value' | 'type'>
 
 /**
  * The `Editor` interface stores all the state of a Slate editor. It is extended
@@ -261,7 +261,7 @@ export interface EditorInterface {
     editor: Editor,
     options?: EditorLevelsOptions<T>
   ) => Generator<NodeEntry<T>, void, undefined>
-  marks: (editor: Editor) => Omit<Text, 'value'> | null
+  marks: (editor: Editor) => Omit<Text, 'value' | 'type'> | null
   next: <T extends Descendant>(
     editor: Editor,
     options?: EditorNextOptions<T>
@@ -787,7 +787,7 @@ export const Editor: EditorInterface = {
    * Get the marks that would be added to text at the current selection.
    */
 
-  marks(editor: Editor): Omit<Text, 'value'> | null {
+  marks(editor: Editor): Omit<Text, 'value' | 'type'> | null {
     const { marks, selection } = editor
 
     if (!selection) {
