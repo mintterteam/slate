@@ -90,6 +90,28 @@ module.exports["default"] = module.exports, module.exports.__esModule = true;
 
 var _toConsumableArray = unwrapExports(toConsumableArray);
 
+var defineProperty = createCommonjsModule(function (module) {
+function _defineProperty(obj, key, value) {
+  if (key in obj) {
+    Object.defineProperty(obj, key, {
+      value: value,
+      enumerable: true,
+      configurable: true,
+      writable: true
+    });
+  } else {
+    obj[key] = value;
+  }
+
+  return obj;
+}
+
+module.exports = _defineProperty;
+module.exports["default"] = module.exports, module.exports.__esModule = true;
+});
+
+var _defineProperty = unwrapExports(defineProperty);
+
 var arrayWithHoles = createCommonjsModule(function (module) {
 function _arrayWithHoles(arr) {
   if (Array.isArray(arr)) return arr;
@@ -160,28 +182,6 @@ module.exports["default"] = module.exports, module.exports.__esModule = true;
 
 var _slicedToArray = unwrapExports(slicedToArray);
 
-var defineProperty = createCommonjsModule(function (module) {
-function _defineProperty(obj, key, value) {
-  if (key in obj) {
-    Object.defineProperty(obj, key, {
-      value: value,
-      enumerable: true,
-      configurable: true,
-      writable: true
-    });
-  } else {
-    obj[key] = value;
-  }
-
-  return obj;
-}
-
-module.exports = _defineProperty;
-module.exports["default"] = module.exports, module.exports.__esModule = true;
-});
-
-var _defineProperty = unwrapExports(defineProperty);
-
 var DIRTY_PATHS = new WeakMap();
 var DIRTY_PATH_KEYS = new WeakMap();
 var FLUSHING = new WeakMap();
@@ -213,6 +213,9 @@ var createEditor = function createEditor() {
       return false;
     },
     isVoid: function isVoid() {
+      return false;
+    },
+    markableVoid: function markableVoid() {
       return false;
     },
     onChange: function onChange() {},
@@ -335,12 +338,45 @@ var createEditor = function createEditor() {
     },
     addMark: function addMark(key, value) {
       var selection = editor.selection;
+          editor.markableVoid;
 
       if (selection) {
-        if (Range.isExpanded(selection)) {
+        var match = function match(node, path) {
+          if (!Text.isText(node)) {
+            return false; // marks can only be applied to text
+          }
+
+          var _Editor$parent = Editor.parent(editor, path),
+              _Editor$parent2 = _slicedToArray(_Editor$parent, 2),
+              parentNode = _Editor$parent2[0];
+              _Editor$parent2[1];
+
+          return !editor.isVoid(parentNode) || editor.markableVoid(parentNode);
+        };
+
+        var expandedSelection = Range.isExpanded(selection);
+        var markAcceptingVoidSelected = false;
+
+        if (!expandedSelection) {
+          var _Editor$node = Editor.node(editor, selection),
+              _Editor$node2 = _slicedToArray(_Editor$node, 2),
+              selectedNode = _Editor$node2[0],
+              selectedPath = _Editor$node2[1];
+
+          if (selectedNode && match(selectedNode, selectedPath)) {
+            var _Editor$parent3 = Editor.parent(editor, selectedPath),
+                _Editor$parent4 = _slicedToArray(_Editor$parent3, 1),
+                parentNode = _Editor$parent4[0];
+
+            markAcceptingVoidSelected = parentNode && editor.markableVoid(parentNode);
+          }
+        }
+
+        if (expandedSelection || markAcceptingVoidSelected) {
           Transforms.setNodes(editor, _defineProperty({}, key, value), {
-            match: Text.isText,
-            split: true
+            match: match,
+            split: true,
+            voids: true
           });
         } else {
           var marks = _objectSpread$9(_objectSpread$9({}, Editor.marks(editor) || {}), {}, _defineProperty({}, key, value)); // @ts-ignore
@@ -529,10 +565,42 @@ var createEditor = function createEditor() {
       var selection = editor.selection;
 
       if (selection) {
-        if (Range.isExpanded(selection)) {
+        var match = function match(node, path) {
+          if (!Text.isText(node)) {
+            return false; // marks can only be applied to text
+          }
+
+          var _Editor$parent5 = Editor.parent(editor, path),
+              _Editor$parent6 = _slicedToArray(_Editor$parent5, 2),
+              parentNode = _Editor$parent6[0];
+              _Editor$parent6[1];
+
+          return !editor.isVoid(parentNode) || editor.markableVoid(parentNode);
+        };
+
+        var expandedSelection = Range.isExpanded(selection);
+        var markAcceptingVoidSelected = false;
+
+        if (!expandedSelection) {
+          var _Editor$node3 = Editor.node(editor, selection),
+              _Editor$node4 = _slicedToArray(_Editor$node3, 2),
+              selectedNode = _Editor$node4[0],
+              selectedPath = _Editor$node4[1];
+
+          if (selectedNode && match(selectedNode, selectedPath)) {
+            var _Editor$parent7 = Editor.parent(editor, selectedPath),
+                _Editor$parent8 = _slicedToArray(_Editor$parent7, 1),
+                parentNode = _Editor$parent8[0];
+
+            markAcceptingVoidSelected = parentNode && editor.markableVoid(parentNode);
+          }
+        }
+
+        if (expandedSelection || markAcceptingVoidSelected) {
           Transforms.unsetNodes(editor, key, {
-            match: Text.isText,
-            split: true
+            match: match,
+            split: true,
+            voids: true
           });
         } else {
           var marks = _objectSpread$9({}, Editor.marks(editor) || {});
@@ -1157,8 +1225,16 @@ var Editor = {
             n = _step$value[0],
             p = _step$value[1];
 
-        if (!Text.isText(n) && !Path.equals(path, p)) {
-          return [n, p];
+        if (Text.isText(n)) return;
+
+        if (Range.isRange(at)) {
+          if (Path.isAncestor(p, at.anchor.path) && Path.isAncestor(p, at.focus.path)) {
+            return [n, p];
+          }
+        } else {
+          if (!Path.equals(path, p)) {
+            return [n, p];
+          }
         }
       }
     } catch (err) {
@@ -1623,22 +1699,30 @@ var Editor = {
         at: path,
         match: Text.isText
       });
-      var block = Editor.above(editor, {
+      var markedVoid = Editor.above(editor, {
         match: function match(n) {
-          return Editor.isBlock(editor, n);
+          return Editor.isVoid(editor, n) && editor.markableVoid(n);
         }
       });
 
-      if (prev && block) {
-        var _prev = _slicedToArray(prev, 2),
-            prevNode = _prev[0],
-            prevPath = _prev[1];
+      if (!markedVoid) {
+        var block = Editor.above(editor, {
+          match: function match(n) {
+            return Editor.isBlock(editor, n);
+          }
+        });
 
-        var _block = _slicedToArray(block, 2),
-            blockPath = _block[1];
+        if (prev && block) {
+          var _prev = _slicedToArray(prev, 2),
+              prevNode = _prev[0],
+              prevPath = _prev[1];
 
-        if (Path.isAncestor(blockPath, prevPath)) {
-          node = prevNode;
+          var _block = _slicedToArray(block, 2),
+              blockPath = _block[1];
+
+          if (Path.isAncestor(blockPath, prevPath)) {
+            node = prevNode;
+          }
         }
       }
     }
@@ -2556,7 +2640,7 @@ var Editor = {
         end = _Range$edges8[1]; // PERF: exit early if we can guarantee that the range isn't hanging.
 
 
-    if (start.offset !== 0 || end.offset !== 0 || Range.isCollapsed(range)) {
+    if (start.offset !== 0 || end.offset !== 0 || Range.isCollapsed(range) || Path.hasPrevious(end.path)) {
       return range;
     }
 
@@ -2564,7 +2648,8 @@ var Editor = {
       at: end,
       match: function match(n) {
         return Editor.isBlock(editor, n);
-      }
+      },
+      voids: voids
     });
     var blockPath = endBlock ? endBlock[1] : [];
     var first = Editor.start(editor, start);
@@ -3378,6 +3463,7 @@ var Operation = {
   }
 };
 
+// eslint-disable-next-line no-redeclare
 var Path = {
   /**
    * Get a list of ancestor paths for a given path.
@@ -3661,120 +3747,120 @@ var Path = {
    */
   transform: function transform(path, operation) {
     var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
-    return immer.produce(path, function (p) {
-      var _options$affinity = options.affinity,
-          affinity = _options$affinity === void 0 ? 'forward' : _options$affinity; // PERF: Exit early if the operation is guaranteed not to have an effect.
+    if (!path) return null; // PERF: use destructing instead of immer
 
-      if (!path || (path === null || path === void 0 ? void 0 : path.length) === 0) {
-        return;
-      }
+    var p = _toConsumableArray(path);
 
-      if (p === null) {
-        return null;
-      }
+    var _options$affinity = options.affinity,
+        affinity = _options$affinity === void 0 ? 'forward' : _options$affinity; // PERF: Exit early if the operation is guaranteed not to have an effect.
 
-      switch (operation.type) {
-        case 'insert_node':
-          {
-            var op = operation.path;
+    if (path.length === 0) {
+      return p;
+    }
 
-            if (Path.equals(op, p) || Path.endsBefore(op, p) || Path.isAncestor(op, p)) {
-              p[op.length - 1] += 1;
-            }
+    switch (operation.type) {
+      case 'insert_node':
+        {
+          var op = operation.path;
 
-            break;
+          if (Path.equals(op, p) || Path.endsBefore(op, p) || Path.isAncestor(op, p)) {
+            p[op.length - 1] += 1;
           }
 
-        case 'remove_node':
-          {
-            var _op = operation.path;
+          break;
+        }
 
-            if (Path.equals(_op, p) || Path.isAncestor(_op, p)) {
+      case 'remove_node':
+        {
+          var _op = operation.path;
+
+          if (Path.equals(_op, p) || Path.isAncestor(_op, p)) {
+            return null;
+          } else if (Path.endsBefore(_op, p)) {
+            p[_op.length - 1] -= 1;
+          }
+
+          break;
+        }
+
+      case 'merge_node':
+        {
+          var _op2 = operation.path,
+              position = operation.position;
+
+          if (Path.equals(_op2, p) || Path.endsBefore(_op2, p)) {
+            p[_op2.length - 1] -= 1;
+          } else if (Path.isAncestor(_op2, p)) {
+            p[_op2.length - 1] -= 1;
+            p[_op2.length] += position;
+          }
+
+          break;
+        }
+
+      case 'split_node':
+        {
+          var _op3 = operation.path,
+              _position = operation.position;
+
+          if (Path.equals(_op3, p)) {
+            if (affinity === 'forward') {
+              p[p.length - 1] += 1;
+            } else if (affinity === 'backward') ; else {
               return null;
-            } else if (Path.endsBefore(_op, p)) {
-              p[_op.length - 1] -= 1;
             }
-
-            break;
+          } else if (Path.endsBefore(_op3, p)) {
+            p[_op3.length - 1] += 1;
+          } else if (Path.isAncestor(_op3, p) && path[_op3.length] >= _position) {
+            p[_op3.length - 1] += 1;
+            p[_op3.length] -= _position;
           }
 
-        case 'merge_node':
-          {
-            var _op2 = operation.path,
-                position = operation.position;
+          break;
+        }
 
-            if (Path.equals(_op2, p) || Path.endsBefore(_op2, p)) {
-              p[_op2.length - 1] -= 1;
-            } else if (Path.isAncestor(_op2, p)) {
-              p[_op2.length - 1] -= 1;
-              p[_op2.length] += position;
-            }
+      case 'move_node':
+        {
+          var _op4 = operation.path,
+              onp = operation.newPath; // If the old and new path are the same, it's a no-op.
 
-            break;
+          if (Path.equals(_op4, onp)) {
+            return p;
           }
 
-        case 'split_node':
-          {
-            var _op3 = operation.path,
-                _position = operation.position;
+          if (Path.isAncestor(_op4, p) || Path.equals(_op4, p)) {
+            var copy = onp.slice();
 
-            if (Path.equals(_op3, p)) {
-              if (affinity === 'forward') {
-                p[p.length - 1] += 1;
-              } else if (affinity === 'backward') ; else {
-                return null;
-              }
-            } else if (Path.endsBefore(_op3, p)) {
-              p[_op3.length - 1] += 1;
-            } else if (Path.isAncestor(_op3, p) && path[_op3.length] >= _position) {
-              p[_op3.length - 1] += 1;
-              p[_op3.length] -= _position;
+            if (Path.endsBefore(_op4, onp) && _op4.length < onp.length) {
+              copy[_op4.length - 1] -= 1;
             }
 
-            break;
-          }
-
-        case 'move_node':
-          {
-            var _op4 = operation.path,
-                onp = operation.newPath; // If the old and new path are the same, it's a no-op.
-
-            if (Path.equals(_op4, onp)) {
-              return;
+            return copy.concat(p.slice(_op4.length));
+          } else if (Path.isSibling(_op4, onp) && (Path.isAncestor(onp, p) || Path.equals(onp, p))) {
+            if (Path.endsBefore(_op4, p)) {
+              p[_op4.length - 1] -= 1;
+            } else {
+              p[_op4.length - 1] += 1;
             }
-
-            if (Path.isAncestor(_op4, p) || Path.equals(_op4, p)) {
-              var copy = onp.slice();
-
-              if (Path.endsBefore(_op4, onp) && _op4.length < onp.length) {
-                copy[_op4.length - 1] -= 1;
-              }
-
-              return copy.concat(p.slice(_op4.length));
-            } else if (Path.isSibling(_op4, onp) && (Path.isAncestor(onp, p) || Path.equals(onp, p))) {
-              if (Path.endsBefore(_op4, p)) {
-                p[_op4.length - 1] -= 1;
-              } else {
-                p[_op4.length - 1] += 1;
-              }
-            } else if (Path.endsBefore(onp, p) || Path.equals(onp, p) || Path.isAncestor(onp, p)) {
-              if (Path.endsBefore(_op4, p)) {
-                p[_op4.length - 1] -= 1;
-              }
-
-              p[onp.length - 1] += 1;
-            } else if (Path.endsBefore(_op4, p)) {
-              if (Path.equals(onp, p)) {
-                p[onp.length - 1] += 1;
-              }
-
+          } else if (Path.endsBefore(onp, p) || Path.equals(onp, p) || Path.isAncestor(onp, p)) {
+            if (Path.endsBefore(_op4, p)) {
               p[_op4.length - 1] -= 1;
             }
 
-            break;
+            p[onp.length - 1] += 1;
+          } else if (Path.endsBefore(_op4, p)) {
+            if (Path.equals(onp, p)) {
+              p[onp.length - 1] += 1;
+            }
+
+            p[_op4.length - 1] -= 1;
           }
-      }
-    });
+
+          break;
+        }
+    }
+
+    return p;
   }
 };
 
@@ -4989,7 +5075,9 @@ var NodeTransforms = {
 
       if (Range.isRange(at)) {
         if (!hanging) {
-          at = Editor.unhangRange(editor, at);
+          at = Editor.unhangRange(editor, at, {
+            voids: voids
+          });
         }
 
         if (Range.isCollapsed(at)) {
@@ -5233,7 +5321,9 @@ var NodeTransforms = {
       }
 
       if (!hanging && Range.isRange(at)) {
-        at = Editor.unhangRange(editor, at);
+        at = Editor.unhangRange(editor, at, {
+          voids: voids
+        });
       }
 
       if (Range.isRange(at)) {
@@ -5463,7 +5553,9 @@ var NodeTransforms = {
       }
 
       if (!hanging && Range.isRange(at)) {
-        at = Editor.unhangRange(editor, at);
+        at = Editor.unhangRange(editor, at, {
+          voids: voids
+        });
       }
 
       var depths = Editor.nodes(editor, {
@@ -5529,7 +5621,9 @@ var NodeTransforms = {
       }
 
       if (!hanging && Range.isRange(at)) {
-        at = Editor.unhangRange(editor, at);
+        at = Editor.unhangRange(editor, at, {
+          voids: voids
+        });
       }
 
       if (split && Range.isRange(at)) {
@@ -6449,15 +6543,15 @@ var TextTransforms = {
 
           var _entry = _slicedToArray(entry, 2),
               _node2 = _entry[0],
-              _path3 = _entry[1];
+              _path2 = _entry[1];
 
-          if (lastPath && Path.compare(_path3, lastPath) === 0) {
+          if (lastPath && Path.compare(_path2, lastPath) === 0) {
             continue;
           }
 
-          if (!voids && Editor.isVoid(editor, _node2) || !Path.isCommon(_path3, start.path) && !Path.isCommon(_path3, end.path)) {
+          if (!voids && Editor.isVoid(editor, _node2) || !Path.isCommon(_path2, start.path) && !Path.isCommon(_path2, end.path)) {
             matches.push(entry);
-            lastPath = _path3;
+            lastPath = _path2;
           }
         }
       } catch (err) {
@@ -6499,16 +6593,16 @@ var TextTransforms = {
         }
       }
 
-      for (var _i = 0, _pathRefs = pathRefs; _i < _pathRefs.length; _i++) {
-        var pathRef = _pathRefs[_i];
-
-        var _path = pathRef.unref();
-
-        Transforms.removeNodes(editor, {
-          at: _path,
+      pathRefs.reverse().map(function (r) {
+        return r.unref();
+      }).filter(function (r) {
+        return r !== null;
+      }).forEach(function (p) {
+        return Transforms.removeNodes(editor, {
+          at: p,
           voids: voids
         });
-      }
+      });
 
       if (!endVoid) {
         var _point2 = endRef.current;
@@ -6517,7 +6611,7 @@ var TextTransforms = {
             _Editor$leaf4 = _slicedToArray(_Editor$leaf3, 1),
             _node = _Editor$leaf4[0];
 
-        var _path2 = _point2.path;
+        var _path = _point2.path;
 
         var _offset = isSingleText ? start.offset : 0;
 
@@ -6526,7 +6620,7 @@ var TextTransforms = {
         if (_text.length > 0) {
           editor.apply({
             type: 'remove_text',
-            path: _path2,
+            path: _path,
             offset: _offset,
             text: _text
           });
@@ -6580,7 +6674,9 @@ var TextTransforms = {
         return;
       } else if (Range.isRange(at)) {
         if (!hanging) {
-          at = Editor.unhangRange(editor, at);
+          at = Editor.unhangRange(editor, at, {
+            voids: voids
+          });
         }
 
         if (Range.isCollapsed(at)) {
@@ -6720,8 +6816,8 @@ var TextTransforms = {
       var starting = true;
       var hasBlocks = false;
 
-      for (var _i2 = 0, _matches = matches; _i2 < _matches.length; _i2++) {
-        var _matches$_i = _slicedToArray(_matches[_i2], 1),
+      for (var _i = 0, _matches = matches; _i < _matches.length; _i++) {
+        var _matches$_i = _slicedToArray(_matches[_i], 1),
             node = _matches$_i[0];
 
         if (Element.isElement(node) && !editor.isInline(node)) {

@@ -39,6 +39,7 @@ var createEditor = () => {
     marks: null,
     isInline: () => false,
     isVoid: () => false,
+    markableVoid: () => false,
     onChange: () => {},
     apply: op => {
       for (var ref of Editor.pathRefs(editor)) {
@@ -109,16 +110,39 @@ var createEditor = () => {
     },
     addMark: (key, value) => {
       var {
-        selection
+        selection,
+        markableVoid
       } = editor;
 
       if (selection) {
-        if (Range.isExpanded(selection)) {
+        var match = (node, path) => {
+          if (!Text.isText(node)) {
+            return false; // marks can only be applied to text
+          }
+
+          var [parentNode, parentPath] = Editor.parent(editor, path);
+          return !editor.isVoid(parentNode) || editor.markableVoid(parentNode);
+        };
+
+        var expandedSelection = Range.isExpanded(selection);
+        var markAcceptingVoidSelected = false;
+
+        if (!expandedSelection) {
+          var [selectedNode, selectedPath] = Editor.node(editor, selection);
+
+          if (selectedNode && match(selectedNode, selectedPath)) {
+            var [parentNode] = Editor.parent(editor, selectedPath);
+            markAcceptingVoidSelected = parentNode && editor.markableVoid(parentNode);
+          }
+        }
+
+        if (expandedSelection || markAcceptingVoidSelected) {
           Transforms.setNodes(editor, {
             [key]: value
           }, {
-            match: Text.isText,
-            split: true
+            match,
+            split: true,
+            voids: true
           });
         } else {
           var marks = _objectSpread$9(_objectSpread$9({}, Editor.marks(editor) || {}), {}, {
@@ -318,10 +342,32 @@ var createEditor = () => {
       } = editor;
 
       if (selection) {
-        if (Range.isExpanded(selection)) {
+        var match = (node, path) => {
+          if (!Text.isText(node)) {
+            return false; // marks can only be applied to text
+          }
+
+          var [parentNode, parentPath] = Editor.parent(editor, path);
+          return !editor.isVoid(parentNode) || editor.markableVoid(parentNode);
+        };
+
+        var expandedSelection = Range.isExpanded(selection);
+        var markAcceptingVoidSelected = false;
+
+        if (!expandedSelection) {
+          var [selectedNode, selectedPath] = Editor.node(editor, selection);
+
+          if (selectedNode && match(selectedNode, selectedPath)) {
+            var [parentNode] = Editor.parent(editor, selectedPath);
+            markAcceptingVoidSelected = parentNode && editor.markableVoid(parentNode);
+          }
+        }
+
+        if (expandedSelection || markAcceptingVoidSelected) {
           Transforms.unsetNodes(editor, key, {
-            match: Text.isText,
-            split: true
+            match,
+            split: true,
+            voids: true
           });
         } else {
           var marks = _objectSpread$9({}, Editor.marks(editor) || {});
@@ -871,8 +917,16 @@ var Editor = {
       match,
       reverse
     })) {
-      if (!Text.isText(n) && !Path.equals(path, p)) {
-        return [n, p];
+      if (Text.isText(n)) return;
+
+      if (Range.isRange(at)) {
+        if (Path.isAncestor(p, at.anchor.path) && Path.isAncestor(p, at.focus.path)) {
+          return [n, p];
+        }
+      } else {
+        if (!Path.equals(path, p)) {
+          return [n, p];
+        }
       }
     }
   },
@@ -1293,16 +1347,22 @@ var Editor = {
         at: path,
         match: Text.isText
       });
-      var block = Editor.above(editor, {
-        match: n => Editor.isBlock(editor, n)
+      var markedVoid = Editor.above(editor, {
+        match: n => Editor.isVoid(editor, n) && editor.markableVoid(n)
       });
 
-      if (prev && block) {
-        var [prevNode, prevPath] = prev;
-        var [, blockPath] = block;
+      if (!markedVoid) {
+        var block = Editor.above(editor, {
+          match: n => Editor.isBlock(editor, n)
+        });
 
-        if (Path.isAncestor(blockPath, prevPath)) {
-          node = prevNode;
+        if (prev && block) {
+          var [prevNode, prevPath] = prev;
+          var [, blockPath] = block;
+
+          if (Path.isAncestor(blockPath, prevPath)) {
+            node = prevNode;
+          }
         }
       }
     }
@@ -2123,13 +2183,14 @@ var Editor = {
     } = options;
     var [start, end] = Range.edges(range); // PERF: exit early if we can guarantee that the range isn't hanging.
 
-    if (start.offset !== 0 || end.offset !== 0 || Range.isCollapsed(range)) {
+    if (start.offset !== 0 || end.offset !== 0 || Range.isCollapsed(range) || Path.hasPrevious(end.path)) {
       return range;
     }
 
     var endBlock = Editor.above(editor, {
       at: end,
-      match: n => Editor.isBlock(editor, n)
+      match: n => Editor.isBlock(editor, n),
+      voids
     });
     var blockPath = endBlock ? endBlock[1] : [];
     var first = Editor.start(editor, start);
@@ -2855,6 +2916,7 @@ var Operation = {
 
 };
 
+// eslint-disable-next-line no-redeclare
 var Path = {
   /**
    * Get a list of ancestor paths for a given path.
@@ -3138,131 +3200,130 @@ var Path = {
    */
   transform(path, operation) {
     var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
-    return produce(path, p => {
-      var {
-        affinity = 'forward'
-      } = options; // PERF: Exit early if the operation is guaranteed not to have an effect.
+    if (!path) return null; // PERF: use destructing instead of immer
 
-      if (!path || (path === null || path === void 0 ? void 0 : path.length) === 0) {
-        return;
-      }
+    var p = [...path];
+    var {
+      affinity = 'forward'
+    } = options; // PERF: Exit early if the operation is guaranteed not to have an effect.
 
-      if (p === null) {
-        return null;
-      }
+    if (path.length === 0) {
+      return p;
+    }
 
-      switch (operation.type) {
-        case 'insert_node':
-          {
-            var {
-              path: op
-            } = operation;
+    switch (operation.type) {
+      case 'insert_node':
+        {
+          var {
+            path: op
+          } = operation;
 
-            if (Path.equals(op, p) || Path.endsBefore(op, p) || Path.isAncestor(op, p)) {
-              p[op.length - 1] += 1;
-            }
-
-            break;
+          if (Path.equals(op, p) || Path.endsBefore(op, p) || Path.isAncestor(op, p)) {
+            p[op.length - 1] += 1;
           }
 
-        case 'remove_node':
-          {
-            var {
-              path: _op
-            } = operation;
+          break;
+        }
 
-            if (Path.equals(_op, p) || Path.isAncestor(_op, p)) {
+      case 'remove_node':
+        {
+          var {
+            path: _op
+          } = operation;
+
+          if (Path.equals(_op, p) || Path.isAncestor(_op, p)) {
+            return null;
+          } else if (Path.endsBefore(_op, p)) {
+            p[_op.length - 1] -= 1;
+          }
+
+          break;
+        }
+
+      case 'merge_node':
+        {
+          var {
+            path: _op2,
+            position
+          } = operation;
+
+          if (Path.equals(_op2, p) || Path.endsBefore(_op2, p)) {
+            p[_op2.length - 1] -= 1;
+          } else if (Path.isAncestor(_op2, p)) {
+            p[_op2.length - 1] -= 1;
+            p[_op2.length] += position;
+          }
+
+          break;
+        }
+
+      case 'split_node':
+        {
+          var {
+            path: _op3,
+            position: _position
+          } = operation;
+
+          if (Path.equals(_op3, p)) {
+            if (affinity === 'forward') {
+              p[p.length - 1] += 1;
+            } else if (affinity === 'backward') ; else {
               return null;
-            } else if (Path.endsBefore(_op, p)) {
-              p[_op.length - 1] -= 1;
             }
-
-            break;
+          } else if (Path.endsBefore(_op3, p)) {
+            p[_op3.length - 1] += 1;
+          } else if (Path.isAncestor(_op3, p) && path[_op3.length] >= _position) {
+            p[_op3.length - 1] += 1;
+            p[_op3.length] -= _position;
           }
 
-        case 'merge_node':
-          {
-            var {
-              path: _op2,
-              position
-            } = operation;
+          break;
+        }
 
-            if (Path.equals(_op2, p) || Path.endsBefore(_op2, p)) {
-              p[_op2.length - 1] -= 1;
-            } else if (Path.isAncestor(_op2, p)) {
-              p[_op2.length - 1] -= 1;
-              p[_op2.length] += position;
-            }
+      case 'move_node':
+        {
+          var {
+            path: _op4,
+            newPath: onp
+          } = operation; // If the old and new path are the same, it's a no-op.
 
-            break;
+          if (Path.equals(_op4, onp)) {
+            return p;
           }
 
-        case 'split_node':
-          {
-            var {
-              path: _op3,
-              position: _position
-            } = operation;
+          if (Path.isAncestor(_op4, p) || Path.equals(_op4, p)) {
+            var copy = onp.slice();
 
-            if (Path.equals(_op3, p)) {
-              if (affinity === 'forward') {
-                p[p.length - 1] += 1;
-              } else if (affinity === 'backward') ; else {
-                return null;
-              }
-            } else if (Path.endsBefore(_op3, p)) {
-              p[_op3.length - 1] += 1;
-            } else if (Path.isAncestor(_op3, p) && path[_op3.length] >= _position) {
-              p[_op3.length - 1] += 1;
-              p[_op3.length] -= _position;
+            if (Path.endsBefore(_op4, onp) && _op4.length < onp.length) {
+              copy[_op4.length - 1] -= 1;
             }
 
-            break;
-          }
-
-        case 'move_node':
-          {
-            var {
-              path: _op4,
-              newPath: onp
-            } = operation; // If the old and new path are the same, it's a no-op.
-
-            if (Path.equals(_op4, onp)) {
-              return;
+            return copy.concat(p.slice(_op4.length));
+          } else if (Path.isSibling(_op4, onp) && (Path.isAncestor(onp, p) || Path.equals(onp, p))) {
+            if (Path.endsBefore(_op4, p)) {
+              p[_op4.length - 1] -= 1;
+            } else {
+              p[_op4.length - 1] += 1;
             }
-
-            if (Path.isAncestor(_op4, p) || Path.equals(_op4, p)) {
-              var copy = onp.slice();
-
-              if (Path.endsBefore(_op4, onp) && _op4.length < onp.length) {
-                copy[_op4.length - 1] -= 1;
-              }
-
-              return copy.concat(p.slice(_op4.length));
-            } else if (Path.isSibling(_op4, onp) && (Path.isAncestor(onp, p) || Path.equals(onp, p))) {
-              if (Path.endsBefore(_op4, p)) {
-                p[_op4.length - 1] -= 1;
-              } else {
-                p[_op4.length - 1] += 1;
-              }
-            } else if (Path.endsBefore(onp, p) || Path.equals(onp, p) || Path.isAncestor(onp, p)) {
-              if (Path.endsBefore(_op4, p)) {
-                p[_op4.length - 1] -= 1;
-              }
-
-              p[onp.length - 1] += 1;
-            } else if (Path.endsBefore(_op4, p)) {
-              if (Path.equals(onp, p)) {
-                p[onp.length - 1] += 1;
-              }
-
+          } else if (Path.endsBefore(onp, p) || Path.equals(onp, p) || Path.isAncestor(onp, p)) {
+            if (Path.endsBefore(_op4, p)) {
               p[_op4.length - 1] -= 1;
             }
 
-            break;
+            p[onp.length - 1] += 1;
+          } else if (Path.endsBefore(_op4, p)) {
+            if (Path.equals(onp, p)) {
+              p[onp.length - 1] += 1;
+            }
+
+            p[_op4.length - 1] -= 1;
           }
-      }
-    });
+
+          break;
+        }
+    }
+
+    return p;
   }
 
 };
@@ -4341,7 +4402,9 @@ var NodeTransforms = {
 
       if (Range.isRange(at)) {
         if (!hanging) {
-          at = Editor.unhangRange(editor, at);
+          at = Editor.unhangRange(editor, at, {
+            voids
+          });
         }
 
         if (Range.isCollapsed(at)) {
@@ -4549,7 +4612,9 @@ var NodeTransforms = {
       }
 
       if (!hanging && Range.isRange(at)) {
-        at = Editor.unhangRange(editor, at);
+        at = Editor.unhangRange(editor, at, {
+          voids
+        });
       }
 
       if (Range.isRange(at)) {
@@ -4756,7 +4821,9 @@ var NodeTransforms = {
       }
 
       if (!hanging && Range.isRange(at)) {
-        at = Editor.unhangRange(editor, at);
+        at = Editor.unhangRange(editor, at, {
+          voids
+        });
       }
 
       var depths = Editor.nodes(editor, {
@@ -4813,7 +4880,9 @@ var NodeTransforms = {
       }
 
       if (!hanging && Range.isRange(at)) {
-        at = Editor.unhangRange(editor, at);
+        at = Editor.unhangRange(editor, at, {
+          voids
+        });
       }
 
       if (split && Range.isRange(at)) {
@@ -5651,20 +5720,16 @@ var TextTransforms = {
         }
       }
 
-      for (var pathRef of pathRefs) {
-        var _path2 = pathRef.unref();
-
-        Transforms.removeNodes(editor, {
-          at: _path2,
-          voids
-        });
-      }
+      pathRefs.reverse().map(r => r.unref()).filter(r => r !== null).forEach(p => Transforms.removeNodes(editor, {
+        at: p,
+        voids
+      }));
 
       if (!endVoid) {
         var _point2 = endRef.current;
         var [_node2] = Editor.leaf(editor, _point2);
         var {
-          path: _path3
+          path: _path2
         } = _point2;
 
         var _offset = isSingleText ? start.offset : 0;
@@ -5674,7 +5739,7 @@ var TextTransforms = {
         if (_text.length > 0) {
           editor.apply({
             type: 'remove_text',
-            path: _path3,
+            path: _path2,
             offset: _offset,
             text: _text
           });
@@ -5729,7 +5794,9 @@ var TextTransforms = {
         return;
       } else if (Range.isRange(at)) {
         if (!hanging) {
-          at = Editor.unhangRange(editor, at);
+          at = Editor.unhangRange(editor, at, {
+            voids
+          });
         }
 
         if (Range.isCollapsed(at)) {

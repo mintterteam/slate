@@ -201,6 +201,107 @@ module.exports["default"] = module.exports, module.exports.__esModule = true;
 
 var _objectWithoutProperties = unwrapExports(objectWithoutProperties);
 
+/**
+ * A React context for sharing the editor object.
+ */
+
+var EditorContext = /*#__PURE__*/React.createContext(null);
+/**
+ * Get the current editor object from the React context.
+ */
+
+var useSlateStatic = function useSlateStatic() {
+  var editor = React.useContext(EditorContext);
+
+  if (!editor) {
+    throw new Error("The `useSlateStatic` hook must be used inside the <Slate> component's context.");
+  }
+
+  return editor;
+};
+
+var IS_REACT_VERSION_17_OR_ABOVE = parseInt(React__default['default'].version.split('.')[0], 10) >= 17;
+var IS_IOS = typeof navigator !== 'undefined' && typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+var IS_APPLE = typeof navigator !== 'undefined' && /Mac OS X/.test(navigator.userAgent);
+var IS_ANDROID = typeof navigator !== 'undefined' && /Android/.test(navigator.userAgent);
+var IS_FIREFOX = typeof navigator !== 'undefined' && /^(?!.*Seamonkey)(?=.*Firefox).*/i.test(navigator.userAgent);
+var IS_SAFARI = typeof navigator !== 'undefined' && /Version\/[\d\.]+.*Safari/.test(navigator.userAgent); // "modern" Edge was released at 79.x
+
+var IS_EDGE_LEGACY = typeof navigator !== 'undefined' && /Edge?\/(?:[0-6][0-9]|[0-7][0-8])(?:\.)/i.test(navigator.userAgent);
+var IS_CHROME = typeof navigator !== 'undefined' && /Chrome/i.test(navigator.userAgent); // Native `beforeInput` events don't work well with react on Chrome 75
+// and older, Chrome 76+ can use `beforeInput` though.
+
+var IS_CHROME_LEGACY = typeof navigator !== 'undefined' && /Chrome?\/(?:[0-7][0-5]|[0-6][0-9])(?:\.)/i.test(navigator.userAgent); // Firefox did not support `beforeInput` until `v87`.
+
+var IS_FIREFOX_LEGACY = typeof navigator !== 'undefined' && /^(?!.*Seamonkey)(?=.*Firefox\/(?:[0-7][0-9]|[0-8][0-6])(?:\.)).*/i.test(navigator.userAgent); // qq browser
+
+var IS_QQBROWSER = typeof navigator !== 'undefined' && /.*QQBrowser/.test(navigator.userAgent); // UC mobile browser
+
+var IS_UC_MOBILE = typeof navigator !== 'undefined' && /.*UCBrowser/.test(navigator.userAgent); // Wechat browser
+
+var IS_WECHATBROWSER = typeof navigator !== 'undefined' && /.*Wechat/.test(navigator.userAgent); // Check if DOM is available as React does internally.
+// https://github.com/facebook/react/blob/master/packages/shared/ExecutionEnvironment.js
+
+var CAN_USE_DOM = !!(typeof window !== 'undefined' && typeof window.document !== 'undefined' && typeof window.document.createElement !== 'undefined'); // COMPAT: Firefox/Edge Legacy don't support the `beforeinput` event
+// Chrome Legacy doesn't support `beforeinput` correctly
+
+var HAS_BEFORE_INPUT_SUPPORT = !IS_CHROME_LEGACY && !IS_EDGE_LEGACY && // globalThis is undefined in older browsers
+typeof globalThis !== 'undefined' && globalThis.InputEvent && // @ts-ignore The `getTargetRanges` property isn't recognized.
+typeof globalThis.InputEvent.prototype.getTargetRanges === 'function';
+
+/**
+ * Two weak maps that allow us rebuild a path given a node. They are populated
+ * at render time such that after a render occurs we can always backtrack.
+ */
+var NODE_TO_INDEX = new WeakMap();
+var NODE_TO_PARENT = new WeakMap();
+/**
+ * Weak maps that allow us to go between Slate nodes and DOM nodes. These
+ * are used to resolve DOM event-related logic into Slate actions.
+ */
+
+var EDITOR_TO_WINDOW = new WeakMap();
+var EDITOR_TO_ELEMENT = new WeakMap();
+var EDITOR_TO_PLACEHOLDER_ELEMENT = new WeakMap();
+var ELEMENT_TO_NODE = new WeakMap();
+var NODE_TO_ELEMENT = new WeakMap();
+var NODE_TO_KEY = new WeakMap();
+var EDITOR_TO_KEY_TO_ELEMENT = new WeakMap();
+/**
+ * Weak maps for storing editor-related state.
+ */
+
+var IS_READ_ONLY = new WeakMap();
+var IS_FOCUSED = new WeakMap();
+var IS_COMPOSING = new WeakMap();
+var EDITOR_TO_USER_SELECTION = new WeakMap();
+/**
+ * Weak map for associating the context `onChange` context with the plugin.
+ */
+
+var EDITOR_TO_ON_CHANGE = new WeakMap();
+/**
+ * Weak maps for saving pending state on composition stage.
+ */
+
+var EDITOR_TO_SCHEDULE_FLUSH = new WeakMap();
+var EDITOR_TO_PENDING_INSERTION_MARKS = new WeakMap();
+var EDITOR_TO_USER_MARKS = new WeakMap();
+/**
+ * Android input handling specific weak-maps
+ */
+
+var EDITOR_TO_PENDING_DIFFS = new WeakMap();
+var EDITOR_TO_PENDING_ACTION = new WeakMap();
+var EDITOR_TO_PENDING_SELECTION = new WeakMap();
+var EDITOR_TO_FORCE_RENDER = new WeakMap();
+/**
+ * Symbols.
+ */
+
+var PLACEHOLDER_SYMBOL = Symbol('placeholder');
+var MARK_PLACEHOLDER_SYMBOL = Symbol('mark-placeholder');
+
 var arrayWithoutHoles = createCommonjsModule(function (module) {
 function _arrayWithoutHoles(arr) {
   if (Array.isArray(arr)) return arrayLikeToArray(arr);
@@ -273,64 +374,12 @@ var Key = function Key() {
   this.id = "".concat(n++);
 };
 
-/**
- * Two weak maps that allow us rebuild a path given a node. They are populated
- * at render time such that after a render occurs we can always backtrack.
- */
-var NODE_TO_INDEX = new WeakMap();
-var NODE_TO_PARENT = new WeakMap();
-/**
- * Weak maps that allow us to go between Slate nodes and DOM nodes. These
- * are used to resolve DOM event-related logic into Slate actions.
- */
-
-var EDITOR_TO_WINDOW = new WeakMap();
-var EDITOR_TO_ELEMENT = new WeakMap();
-var EDITOR_TO_PLACEHOLDER_ELEMENT = new WeakMap();
-var ELEMENT_TO_NODE = new WeakMap();
-var NODE_TO_ELEMENT = new WeakMap();
-var NODE_TO_KEY = new WeakMap();
-var EDITOR_TO_KEY_TO_ELEMENT = new WeakMap();
-/**
- * Weak maps for storing editor-related state.
- */
-
-var IS_READ_ONLY = new WeakMap();
-var IS_FOCUSED = new WeakMap();
-var IS_COMPOSING = new WeakMap();
-var EDITOR_TO_USER_SELECTION = new WeakMap();
-/**
- * Weak map for associating the context `onChange` context with the plugin.
- */
-
-var EDITOR_TO_ON_CHANGE = new WeakMap();
-/**
- * Weak maps for saving pending state on composition stage.
- */
-
-var EDITOR_TO_SCHEDULE_FLUSH = new WeakMap();
-var EDITOR_TO_PENDING_INSERTION_MARKS = new WeakMap();
-var EDITOR_TO_USER_MARKS = new WeakMap();
-/**
- * Android input handling specific weak-maps
- */
-
-var EDITOR_TO_PENDING_DIFFS = new WeakMap();
-var EDITOR_TO_PENDING_ACTION = new WeakMap();
-var EDITOR_TO_PENDING_SELECTION = new WeakMap();
-var EDITOR_TO_FORCE_RENDER = new WeakMap();
-/**
- * Symbols.
- */
-
-var PLACEHOLDER_SYMBOL = Symbol('placeholder');
-var MARK_PLACEHOLDER_SYMBOL = Symbol('mark-placeholder');
-
 function _createForOfIteratorHelper$3(o, allowArrayLike) { var it = typeof Symbol !== "undefined" && o[Symbol.iterator] || o["@@iterator"]; if (!it) { if (Array.isArray(o) || (it = _unsupportedIterableToArray$3(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = it.call(o); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
 
 function _unsupportedIterableToArray$3(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray$3(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray$3(o, minLen); }
 
 function _arrayLikeToArray$3(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
+var DOMText = globalThis.Text;
 /**
  * Returns the host window of a DOM node
  */
@@ -587,35 +636,6 @@ var isTrackedMutation = function isTrackedMutation(editor, mutation, batch) {
   return isTrackedMutation(editor, parentMutation, batch);
 };
 
-var IS_REACT_VERSION_17_OR_ABOVE = parseInt(React__default['default'].version.split('.')[0], 10) >= 17;
-var IS_IOS = typeof navigator !== 'undefined' && typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-var IS_APPLE = typeof navigator !== 'undefined' && /Mac OS X/.test(navigator.userAgent);
-var IS_ANDROID = typeof navigator !== 'undefined' && /Android/.test(navigator.userAgent);
-var IS_FIREFOX = typeof navigator !== 'undefined' && /^(?!.*Seamonkey)(?=.*Firefox).*/i.test(navigator.userAgent);
-var IS_SAFARI = typeof navigator !== 'undefined' && /Version\/[\d\.]+.*Safari/.test(navigator.userAgent); // "modern" Edge was released at 79.x
-
-var IS_EDGE_LEGACY = typeof navigator !== 'undefined' && /Edge?\/(?:[0-6][0-9]|[0-7][0-8])(?:\.)/i.test(navigator.userAgent);
-var IS_CHROME = typeof navigator !== 'undefined' && /Chrome/i.test(navigator.userAgent); // Native `beforeInput` events don't work well with react on Chrome 75
-// and older, Chrome 76+ can use `beforeInput` though.
-
-var IS_CHROME_LEGACY = typeof navigator !== 'undefined' && /Chrome?\/(?:[0-7][0-5]|[0-6][0-9])(?:\.)/i.test(navigator.userAgent); // Firefox did not support `beforeInput` until `v87`.
-
-var IS_FIREFOX_LEGACY = typeof navigator !== 'undefined' && /^(?!.*Seamonkey)(?=.*Firefox\/(?:[0-7][0-9]|[0-8][0-6])(?:\.)).*/i.test(navigator.userAgent); // qq browser
-
-var IS_QQBROWSER = typeof navigator !== 'undefined' && /.*QQBrowser/.test(navigator.userAgent); // UC mobile browser
-
-var IS_UC_MOBILE = typeof navigator !== 'undefined' && /.*UCBrowser/.test(navigator.userAgent); // Wechat browser
-
-var IS_WECHATBROWSER = typeof navigator !== 'undefined' && /.*Wechat/.test(navigator.userAgent); // Check if DOM is available as React does internally.
-// https://github.com/facebook/react/blob/master/packages/shared/ExecutionEnvironment.js
-
-var CAN_USE_DOM = !!(typeof window !== 'undefined' && typeof window.document !== 'undefined' && typeof window.document.createElement !== 'undefined'); // COMPAT: Firefox/Edge Legacy don't support the `beforeinput` event
-// Chrome Legacy doesn't support `beforeinput` correctly
-
-var HAS_BEFORE_INPUT_SUPPORT = !IS_CHROME_LEGACY && !IS_EDGE_LEGACY && // globalThis is undefined in older browsers
-typeof globalThis !== 'undefined' && globalThis.InputEvent && // @ts-ignore The `getTargetRanges` property isn't recognized.
-typeof globalThis.InputEvent.prototype.getTargetRanges === 'function';
-
 var ReactEditor = {
   /**
    * Check if the user is currently composing inside the editor.
@@ -742,7 +762,6 @@ var ReactEditor = {
    * Deselect the editor.
    */
   deselect: function deselect(editor) {
-    ReactEditor.toDOMNode(editor, editor);
     var selection = editor.selection;
     var root = ReactEditor.findDocumentOrShadowRoot(editor);
     var domSelection = root.getSelection();
@@ -875,7 +894,13 @@ var ReactEditor = {
       if (point.offset === end && nextText !== null && nextText !== void 0 && nextText.hasAttribute('data-slate-mark-placeholder')) {
         var _nextText$textContent;
 
-        domPoint = [nextText, (_nextText$textContent = nextText.textContent) !== null && _nextText$textContent !== void 0 && _nextText$textContent.startsWith("\uFEFF") ? 1 : 0];
+        var domText = nextText.childNodes[0];
+        domPoint = [// COMPAT: If we don't explicity set the dom point to be on the actual
+        // dom text element, chrome will put the selection behind the actual dom
+        // text element, causing domRange.getBoundingClientRect() calls on a collapsed
+        // selection to return incorrect zero values (https://bugs.chromium.org/p/chromium/issues/detail?id=435438)
+        // which will cause issues when scrolling to it.
+        domText instanceof DOMText ? domText : nextText, (_nextText$textContent = nextText.textContent) !== null && _nextText$textContent !== void 0 && _nextText$textContent.startsWith("\uFEFF") ? 1 : 0];
         break;
       }
 
@@ -1244,6 +1269,38 @@ var ReactEditor = {
   },
 
   /**
+   * Check if the target is in the editor.
+   */
+  hasTarget: function hasTarget(editor, target) {
+    return isDOMNode(target) && ReactEditor.hasDOMNode(editor, target);
+  },
+
+  /**
+   * Check if the target is editable and in the editor.
+   */
+  hasEditableTarget: function hasEditableTarget(editor, target) {
+    return isDOMNode(target) && ReactEditor.hasDOMNode(editor, target, {
+      editable: true
+    });
+  },
+
+  /**
+   * Check if the target can be selectable
+   */
+  hasSelectableTarget: function hasSelectableTarget(editor, target) {
+    return ReactEditor.hasEditableTarget(editor, target) || ReactEditor.isTargetInsideNonReadonlyVoid(editor, target);
+  },
+
+  /**
+   * Check if the target is inside void and in an non-readonly editor.
+   */
+  isTargetInsideNonReadonlyVoid: function isTargetInsideNonReadonlyVoid(editor, target) {
+    if (IS_READ_ONLY.get(editor)) return false;
+    var slateNode = ReactEditor.hasTarget(editor, target) && ReactEditor.toSlateNode(editor, target);
+    return slate.Editor.isVoid(editor, slateNode);
+  },
+
+  /**
    * Experimental and android specific: Flush all pending diffs and cancel composition at the next possible time.
    */
   androidScheduleFlush: function androidScheduleFlush(editor) {
@@ -1258,978 +1315,6 @@ var ReactEditor = {
   androidPendingDiffs: function androidPendingDiffs(editor) {
     return EDITOR_TO_PENDING_DIFFS.get(editor);
   }
-};
-
-/**
- * Prevent warning on SSR by falling back to useEffect when DOM isn't available
- */
-
-var useIsomorphicLayoutEffect = CAN_USE_DOM ? React.useLayoutEffect : React.useEffect;
-
-var _excluded$3 = ["anchor", "focus"],
-    _excluded2$1 = ["anchor", "focus"];
-var shallowCompare = function shallowCompare(obj1, obj2) {
-  return Object.keys(obj1).length === Object.keys(obj2).length && Object.keys(obj1).every(function (key) {
-    return obj2.hasOwnProperty(key) && obj1[key] === obj2[key];
-  });
-};
-/**
- * Check if a list of decorator ranges are equal to another.
- *
- * PERF: this requires the two lists to also have the ranges inside them in the
- * same order, but this is an okay constraint for us since decorations are
- * kept in order, and the odd case where they aren't is okay to re-render for.
- */
-
-var isDecoratorRangeListEqual = function isDecoratorRangeListEqual(list, another) {
-  if (list.length !== another.length) {
-    return false;
-  }
-
-  for (var i = 0; i < list.length; i++) {
-    var range = list[i];
-    var other = another[i];
-
-    range.anchor;
-        range.focus;
-        var rangeOwnProps = _objectWithoutProperties(range, _excluded$3);
-
-    other.anchor;
-        other.focus;
-        var otherOwnProps = _objectWithoutProperties(other, _excluded2$1);
-
-    if (!slate.Range.equals(range, other) || range[PLACEHOLDER_SYMBOL] !== other[PLACEHOLDER_SYMBOL] || !shallowCompare(rangeOwnProps, otherOwnProps)) {
-      return false;
-    }
-  }
-
-  return true;
-};
-
-/**
- * Leaf content strings.
- */
-
-var String = function String(props) {
-  var isLast = props.isLast,
-      leaf = props.leaf,
-      parent = props.parent,
-      text = props.text;
-  var editor = useSlateStatic();
-  var path = ReactEditor.findPath(editor, text);
-  var parentPath = slate.Path.parent(path);
-  var isMarkPlaceholder = leaf[MARK_PLACEHOLDER_SYMBOL] === true; // COMPAT: Render text inside void nodes with a zero-width space.
-  // So the node can contain selection but the text is not visible.
-
-  if (editor.isVoid(parent)) {
-    return /*#__PURE__*/React__default['default'].createElement(ZeroWidthString, {
-      length: slate.Node.string(parent).length
-    });
-  } // COMPAT: If this is the last text node in an empty block, render a zero-
-  // width space that will convert into a line break when copying and pasting
-  // to support expected plain text.
-
-
-  if (leaf.value === '' && parent.children[parent.children.length - 1] === text && !editor.isInline(parent) && slate.Editor.string(editor, parentPath) === '') {
-    return /*#__PURE__*/React__default['default'].createElement(ZeroWidthString, {
-      isLineBreak: true,
-      isMarkPlaceholder: isMarkPlaceholder
-    });
-  } // COMPAT: If the text is empty, it's because it's on the edge of an inline
-  // node, so we render a zero-width space so that the selection can be
-  // inserted next to it still.
-
-
-  if (leaf.value === '') {
-    return /*#__PURE__*/React__default['default'].createElement(ZeroWidthString, {
-      isMarkPlaceholder: isMarkPlaceholder
-    });
-  } // COMPAT: Browsers will collapse trailing new lines at the end of blocks,
-  // so we need to add an extra trailing new lines to prevent that.
-
-
-  if (isLast && leaf.value.slice(-1) === '\n') {
-    return /*#__PURE__*/React__default['default'].createElement(TextString, {
-      isTrailing: true,
-      text: leaf.value
-    });
-  }
-
-  return /*#__PURE__*/React__default['default'].createElement(TextString, {
-    text: leaf.value
-  });
-};
-/**
- * Leaf strings with text in them.
- */
-
-
-var TextString = function TextString(props) {
-  var text = props.text,
-      _props$isTrailing = props.isTrailing,
-      isTrailing = _props$isTrailing === void 0 ? false : _props$isTrailing;
-  var ref = React.useRef(null);
-
-  var getTextContent = function getTextContent() {
-    return "".concat(text !== null && text !== void 0 ? text : '').concat(isTrailing ? '\n' : '');
-  }; // This is the actual text rendering boundary where we interface with the DOM
-  // The text is not rendered as part of the virtual DOM, as since we handle basic character insertions natively,
-  // updating the DOM is not a one way dataflow anymore. What we need here is not reconciliation and diffing
-  // with previous version of the virtual DOM, but rather diffing with the actual DOM element, and replace the DOM <span> content
-  // exactly if and only if its current content does not match our current virtual DOM.
-  // Otherwise the DOM TextNode would always be replaced by React as the user types, which interferes with native text features,
-  // eg makes native spellcheck opt out from checking the text node.
-  // useLayoutEffect: updating our span before browser paint
-
-
-  useIsomorphicLayoutEffect(function () {
-    // null coalescing text to make sure we're not outputing "null" as a string in the extreme case it is nullish at runtime
-    var textWithTrailing = getTextContent();
-
-    if (ref.current && ref.current.textContent !== textWithTrailing) {
-      ref.current.textContent = textWithTrailing;
-    } // intentionally not specifying dependencies, so that this effect runs on every render
-    // as this effectively replaces "specifying the text in the virtual DOM under the <span> below" on each render
-
-  }); // Render text content immediately if it's the first-time render
-  // Ensure that text content is rendered on server-side rendering
-
-  if (!ref.current) {
-    return /*#__PURE__*/React__default['default'].createElement("span", {
-      "data-slate-string": true,
-      ref: ref
-    }, getTextContent());
-  } // the span is intentionally same on every render in virtual DOM, actual rendering happens in the layout effect above
-
-
-  return /*#__PURE__*/React__default['default'].createElement("span", {
-    "data-slate-string": true,
-    ref: ref
-  });
-};
-/**
- * Leaf strings without text, render as zero-width strings.
- */
-
-
-var ZeroWidthString = function ZeroWidthString(props) {
-  var _props$length = props.length,
-      length = _props$length === void 0 ? 0 : _props$length,
-      _props$isLineBreak = props.isLineBreak,
-      isLineBreak = _props$isLineBreak === void 0 ? false : _props$isLineBreak,
-      _props$isMarkPlacehol = props.isMarkPlaceholder,
-      isMarkPlaceholder = _props$isMarkPlacehol === void 0 ? false : _props$isMarkPlacehol;
-  var attributes = {
-    'data-slate-zero-width': isLineBreak ? 'n' : 'z',
-    'data-slate-length': length
-  };
-
-  if (isMarkPlaceholder) {
-    attributes['data-slate-mark-placeholder'] = true;
-  }
-
-  return /*#__PURE__*/React__default['default'].createElement("span", Object.assign({}, attributes), !IS_ANDROID || !isLineBreak ? "\uFEFF" : null, isLineBreak ? /*#__PURE__*/React__default['default'].createElement("br", null) : null);
-};
-
-/**
- * A React context for sharing the editor object.
- */
-
-var EditorContext = /*#__PURE__*/React.createContext(null);
-/**
- * Get the current editor object from the React context.
- */
-
-var useSlateStatic = function useSlateStatic() {
-  var editor = React.useContext(EditorContext);
-
-  if (!editor) {
-    throw new Error("The `useSlateStatic` hook must be used inside the <Slate> component's context.");
-  }
-
-  return editor;
-};
-
-/**
- * Individual leaves in a text node with unique formatting.
- */
-
-var Leaf = function Leaf(props) {
-  var leaf = props.leaf,
-      isLast = props.isLast,
-      text = props.text,
-      parent = props.parent,
-      renderPlaceholder = props.renderPlaceholder,
-      _props$renderLeaf = props.renderLeaf,
-      renderLeaf = _props$renderLeaf === void 0 ? function (props) {
-    return /*#__PURE__*/React__default['default'].createElement(DefaultLeaf, Object.assign({}, props));
-  } : _props$renderLeaf;
-  var placeholderRef = React.useRef(null);
-  var editor = useSlateStatic();
-  React.useEffect(function () {
-    var placeholderEl = placeholderRef === null || placeholderRef === void 0 ? void 0 : placeholderRef.current;
-    var editorEl = document.querySelector('[data-slate-editor="true"]');
-
-    if (!placeholderEl || !editorEl) {
-      return;
-    }
-
-    editorEl.style.minHeight = "".concat(placeholderEl.clientHeight, "px");
-    EDITOR_TO_PLACEHOLDER_ELEMENT.set(editor, placeholderEl);
-    return function () {
-      editorEl.style.minHeight = 'auto';
-      EDITOR_TO_PLACEHOLDER_ELEMENT["delete"](editor);
-    };
-  }, [placeholderRef, leaf]);
-  var children = /*#__PURE__*/React__default['default'].createElement(String, {
-    isLast: isLast,
-    leaf: leaf,
-    parent: parent,
-    text: text
-  });
-
-  if (leaf[PLACEHOLDER_SYMBOL]) {
-    var placeholderProps = {
-      children: leaf.placeholder,
-      attributes: {
-        'data-slate-placeholder': true,
-        style: {
-          position: 'absolute',
-          pointerEvents: 'none',
-          width: '100%',
-          maxWidth: '100%',
-          display: 'block',
-          opacity: '0.333',
-          userSelect: 'none',
-          textDecoration: 'none'
-        },
-        contentEditable: false,
-        ref: placeholderRef
-      }
-    };
-    children = /*#__PURE__*/React__default['default'].createElement(React__default['default'].Fragment, null, renderPlaceholder(placeholderProps), children);
-  } // COMPAT: Having the `data-` attributes on these leaf elements ensures that
-  // in certain misbehaving browsers they aren't weirdly cloned/destroyed by
-  // contenteditable behaviors. (2019/05/08)
-
-
-  var attributes = {
-    'data-slate-leaf': true
-  };
-  return renderLeaf({
-    attributes: attributes,
-    children: children,
-    leaf: leaf,
-    text: text
-  });
-};
-
-var MemoizedLeaf = /*#__PURE__*/React__default['default'].memo(Leaf, function (prev, next) {
-  return next.parent === prev.parent && next.isLast === prev.isLast && next.renderLeaf === prev.renderLeaf && next.renderPlaceholder === prev.renderPlaceholder && next.text === prev.text && slate.Text.equals(next.leaf, prev.leaf) && next.leaf[PLACEHOLDER_SYMBOL] === prev.leaf[PLACEHOLDER_SYMBOL];
-});
-var DefaultLeaf = function DefaultLeaf(props) {
-  var attributes = props.attributes,
-      children = props.children;
-  return /*#__PURE__*/React__default['default'].createElement("span", Object.assign({}, attributes), children);
-};
-
-/**
- * Text.
- */
-
-var Text = function Text(props) {
-  var decorations = props.decorations,
-      isLast = props.isLast,
-      parent = props.parent,
-      renderPlaceholder = props.renderPlaceholder,
-      renderLeaf = props.renderLeaf,
-      text = props.text;
-  var editor = useSlateStatic();
-  var ref = React.useRef(null);
-  var leaves = slate.Text.decorations(text, decorations);
-  var key = ReactEditor.findKey(editor, text);
-  var children = [];
-
-  for (var i = 0; i < leaves.length; i++) {
-    var leaf = leaves[i];
-    children.push( /*#__PURE__*/React__default['default'].createElement(MemoizedLeaf, {
-      isLast: isLast && i === leaves.length - 1,
-      key: "".concat(key.id, "-").concat(i),
-      renderPlaceholder: renderPlaceholder,
-      leaf: leaf,
-      text: text,
-      parent: parent,
-      renderLeaf: renderLeaf
-    }));
-  } // Update element-related weak maps with the DOM element ref.
-
-
-  useIsomorphicLayoutEffect(function () {
-    var KEY_TO_ELEMENT = EDITOR_TO_KEY_TO_ELEMENT.get(editor);
-
-    if (ref.current) {
-      KEY_TO_ELEMENT === null || KEY_TO_ELEMENT === void 0 ? void 0 : KEY_TO_ELEMENT.set(key, ref.current);
-      NODE_TO_ELEMENT.set(text, ref.current);
-      ELEMENT_TO_NODE.set(ref.current, text);
-    } else {
-      KEY_TO_ELEMENT === null || KEY_TO_ELEMENT === void 0 ? void 0 : KEY_TO_ELEMENT["delete"](key);
-      NODE_TO_ELEMENT["delete"](text);
-    }
-  });
-  return /*#__PURE__*/React__default['default'].createElement("span", {
-    "data-slate-node": "text",
-    ref: ref
-  }, children);
-};
-
-var MemoizedText = /*#__PURE__*/React__default['default'].memo(Text, function (prev, next) {
-  return next.parent === prev.parent && next.isLast === prev.isLast && next.renderLeaf === prev.renderLeaf && next.text === prev.text && isDecoratorRangeListEqual(next.decorations, prev.decorations);
-});
-
-/**
- * Element.
- */
-
-var Element = function Element(props) {
-  var decorations = props.decorations,
-      element = props.element,
-      _props$renderElement = props.renderElement,
-      renderElement = _props$renderElement === void 0 ? function (p) {
-    return /*#__PURE__*/React__default['default'].createElement(DefaultElement, Object.assign({}, p));
-  } : _props$renderElement,
-      renderPlaceholder = props.renderPlaceholder,
-      renderLeaf = props.renderLeaf,
-      selection = props.selection;
-  var ref = React.useRef(null);
-  var editor = useSlateStatic();
-  var readOnly = useReadOnly();
-  var isInline = editor.isInline(element);
-  var key = ReactEditor.findKey(editor, element);
-  var children = useChildren({
-    decorations: decorations,
-    node: element,
-    renderElement: renderElement,
-    renderPlaceholder: renderPlaceholder,
-    renderLeaf: renderLeaf,
-    selection: selection
-  }); // Attributes that the developer must mix into the element in their
-  // custom node renderer component.
-
-  var attributes = {
-    'data-slate-node': 'element',
-    ref: ref
-  };
-
-  if (isInline) {
-    attributes['data-slate-inline'] = true;
-  } // If it's a block node with inline children, add the proper `dir` attribute
-  // for text direction.
-
-
-  if (!isInline && slate.Editor.hasInlines(editor, element)) {
-    var text = slate.Node.string(element);
-    var dir = getDirection__default['default'](text);
-
-    if (dir === 'rtl') {
-      attributes.dir = dir;
-    }
-  } // If it's a void node, wrap the children in extra void-specific elements.
-
-
-  if (slate.Editor.isVoid(editor, element)) {
-    attributes['data-slate-void'] = true;
-
-    if (!readOnly && isInline) {
-      attributes.contentEditable = false;
-    }
-
-    var Tag = isInline ? 'span' : 'div';
-
-    var _Node$texts = slate.Node.texts(element),
-        _Node$texts2 = _slicedToArray(_Node$texts, 1),
-        _Node$texts2$ = _slicedToArray(_Node$texts2[0], 1),
-        _text = _Node$texts2$[0];
-
-    children = /*#__PURE__*/React__default['default'].createElement(Tag, {
-      "data-slate-spacer": true,
-      style: {
-        height: '0',
-        color: 'transparent',
-        outline: 'none',
-        position: 'absolute'
-      }
-    }, /*#__PURE__*/React__default['default'].createElement(MemoizedText, {
-      renderPlaceholder: renderPlaceholder,
-      decorations: [],
-      isLast: false,
-      parent: element,
-      text: _text
-    }));
-    NODE_TO_INDEX.set(_text, 0);
-    NODE_TO_PARENT.set(_text, element);
-  } // Update element-related weak maps with the DOM element ref.
-
-
-  useIsomorphicLayoutEffect(function () {
-    var KEY_TO_ELEMENT = EDITOR_TO_KEY_TO_ELEMENT.get(editor);
-
-    if (ref.current) {
-      KEY_TO_ELEMENT === null || KEY_TO_ELEMENT === void 0 ? void 0 : KEY_TO_ELEMENT.set(key, ref.current);
-      NODE_TO_ELEMENT.set(element, ref.current);
-      ELEMENT_TO_NODE.set(ref.current, element);
-    } else {
-      KEY_TO_ELEMENT === null || KEY_TO_ELEMENT === void 0 ? void 0 : KEY_TO_ELEMENT["delete"](key);
-      NODE_TO_ELEMENT["delete"](element);
-    }
-  });
-  return renderElement({
-    attributes: attributes,
-    children: children,
-    element: element
-  });
-};
-
-var MemoizedElement = /*#__PURE__*/React__default['default'].memo(Element, function (prev, next) {
-  return prev.element === next.element && prev.renderElement === next.renderElement && prev.renderLeaf === next.renderLeaf && isDecoratorRangeListEqual(prev.decorations, next.decorations) && (prev.selection === next.selection || !!prev.selection && !!next.selection && slate.Range.equals(prev.selection, next.selection));
-});
-/**
- * The default element renderer.
- */
-
-var DefaultElement = function DefaultElement(props) {
-  var attributes = props.attributes,
-      children = props.children,
-      element = props.element;
-  var editor = useSlateStatic();
-  var Tag = editor.isInline(element) ? 'span' : 'div';
-  return /*#__PURE__*/React__default['default'].createElement(Tag, Object.assign({}, attributes, {
-    style: {
-      position: 'relative'
-    }
-  }), children);
-};
-
-/**
- * A React context for sharing the `decorate` prop of the editable.
- */
-
-var DecorateContext = /*#__PURE__*/React.createContext(function () {
-  return [];
-});
-/**
- * Get the current `decorate` prop of the editable.
- */
-
-var useDecorate = function useDecorate() {
-  return React.useContext(DecorateContext);
-};
-
-/**
- * A React context for sharing the `selected` state of an element.
- */
-
-var SelectedContext = /*#__PURE__*/React.createContext(false);
-/**
- * Get the current `selected` state of an element.
- */
-
-var useSelected = function useSelected() {
-  return React.useContext(SelectedContext);
-};
-
-function _createForOfIteratorHelper$2(o, allowArrayLike) { var it = typeof Symbol !== "undefined" && o[Symbol.iterator] || o["@@iterator"]; if (!it) { if (Array.isArray(o) || (it = _unsupportedIterableToArray$2(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = it.call(o); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
-
-function _unsupportedIterableToArray$2(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray$2(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray$2(o, minLen); }
-
-function _arrayLikeToArray$2(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
-/**
- * Children.
- */
-
-var useChildren = function useChildren(props) {
-  var decorations = props.decorations,
-      node = props.node,
-      renderElement = props.renderElement,
-      renderPlaceholder = props.renderPlaceholder,
-      renderLeaf = props.renderLeaf,
-      selection = props.selection;
-  var decorate = useDecorate();
-  var editor = useSlateStatic();
-  var path = ReactEditor.findPath(editor, node);
-  var children = [];
-  var isLeafBlock = slate.Element.isElement(node) && !editor.isInline(node) && slate.Editor.hasInlines(editor, node);
-
-  for (var i = 0; i < node.children.length; i++) {
-    var p = path.concat(i);
-    var n = node.children[i];
-    var key = ReactEditor.findKey(editor, n);
-    var range = slate.Editor.range(editor, p);
-    var sel = selection && slate.Range.intersection(range, selection);
-    var ds = decorate([n, p]);
-
-    var _iterator = _createForOfIteratorHelper$2(decorations),
-        _step;
-
-    try {
-      for (_iterator.s(); !(_step = _iterator.n()).done;) {
-        var dec = _step.value;
-        var d = slate.Range.intersection(dec, range);
-
-        if (d) {
-          ds.push(d);
-        }
-      }
-    } catch (err) {
-      _iterator.e(err);
-    } finally {
-      _iterator.f();
-    }
-
-    if (slate.Element.isElement(n)) {
-      children.push( /*#__PURE__*/React__default['default'].createElement(SelectedContext.Provider, {
-        key: "provider-".concat(key.id),
-        value: !!sel
-      }, /*#__PURE__*/React__default['default'].createElement(MemoizedElement, {
-        decorations: ds,
-        element: n,
-        key: key.id,
-        renderElement: renderElement,
-        renderPlaceholder: renderPlaceholder,
-        renderLeaf: renderLeaf,
-        selection: sel
-      })));
-    } else {
-      children.push( /*#__PURE__*/React__default['default'].createElement(MemoizedText, {
-        decorations: ds,
-        key: key.id,
-        isLast: isLeafBlock && i === node.children.length - 1,
-        parent: node,
-        renderPlaceholder: renderPlaceholder,
-        renderLeaf: renderLeaf,
-        text: n
-      }));
-    }
-
-    NODE_TO_INDEX.set(n, i);
-    NODE_TO_PARENT.set(n, node);
-  }
-
-  return children;
-};
-
-/**
- * A React context for sharing the `readOnly` state of the editor.
- */
-
-var ReadOnlyContext = /*#__PURE__*/React.createContext(false);
-/**
- * Get the current `readOnly` state of the editor.
- */
-
-var useReadOnly = function useReadOnly() {
-  return React.useContext(ReadOnlyContext);
-};
-
-var SlateContext = /*#__PURE__*/React.createContext(null);
-/**
- * Get the current editor object from the React context.
- */
-
-var useSlate = function useSlate() {
-  var context = React.useContext(SlateContext);
-
-  if (!context) {
-    throw new Error("The `useSlate` hook must be used inside the <Slate> component's context.");
-  }
-
-  var editor = context.editor;
-  return editor;
-};
-var useSlateWithV = function useSlateWithV() {
-  var context = React.useContext(SlateContext);
-
-  if (!context) {
-    throw new Error("The `useSlate` hook must be used inside the <Slate> component's context.");
-  }
-
-  return context;
-};
-
-var TRIPLE_CLICK = 3;
-
-/**
- * Hotkey mappings for each platform.
- */
-
-var HOTKEYS = {
-  bold: 'mod+b',
-  compose: ['down', 'left', 'right', 'up', 'backspace', 'enter'],
-  moveBackward: 'left',
-  moveForward: 'right',
-  moveWordBackward: 'ctrl+left',
-  moveWordForward: 'ctrl+right',
-  deleteBackward: 'shift?+backspace',
-  deleteForward: 'shift?+delete',
-  extendBackward: 'shift+left',
-  extendForward: 'shift+right',
-  italic: 'mod+i',
-  insertSoftBreak: 'shift+enter',
-  splitBlock: 'enter',
-  undo: 'mod+z'
-};
-var APPLE_HOTKEYS = {
-  moveLineBackward: 'opt+up',
-  moveLineForward: 'opt+down',
-  moveWordBackward: 'opt+left',
-  moveWordForward: 'opt+right',
-  deleteBackward: ['ctrl+backspace', 'ctrl+h'],
-  deleteForward: ['ctrl+delete', 'ctrl+d'],
-  deleteLineBackward: 'cmd+shift?+backspace',
-  deleteLineForward: ['cmd+shift?+delete', 'ctrl+k'],
-  deleteWordBackward: 'opt+shift?+backspace',
-  deleteWordForward: 'opt+shift?+delete',
-  extendLineBackward: 'opt+shift+up',
-  extendLineForward: 'opt+shift+down',
-  redo: 'cmd+shift+z',
-  transposeCharacter: 'ctrl+t'
-};
-var WINDOWS_HOTKEYS = {
-  deleteWordBackward: 'ctrl+shift?+backspace',
-  deleteWordForward: 'ctrl+shift?+delete',
-  redo: ['ctrl+y', 'ctrl+shift+z']
-};
-/**
- * Create a platform-aware hotkey checker.
- */
-
-var create = function create(key) {
-  var generic = HOTKEYS[key];
-  var apple = APPLE_HOTKEYS[key];
-  var windows = WINDOWS_HOTKEYS[key];
-  var isGeneric = generic && isHotkey.isKeyHotkey(generic);
-  var isApple = apple && isHotkey.isKeyHotkey(apple);
-  var isWindows = windows && isHotkey.isKeyHotkey(windows);
-  return function (event) {
-    if (isGeneric && isGeneric(event)) return true;
-    if (IS_APPLE && isApple && isApple(event)) return true;
-    if (!IS_APPLE && isWindows && isWindows(event)) return true;
-    return false;
-  };
-};
-/**
- * Hotkeys.
- */
-
-
-var Hotkeys = {
-  isBold: create('bold'),
-  isCompose: create('compose'),
-  isMoveBackward: create('moveBackward'),
-  isMoveForward: create('moveForward'),
-  isDeleteBackward: create('deleteBackward'),
-  isDeleteForward: create('deleteForward'),
-  isDeleteLineBackward: create('deleteLineBackward'),
-  isDeleteLineForward: create('deleteLineForward'),
-  isDeleteWordBackward: create('deleteWordBackward'),
-  isDeleteWordForward: create('deleteWordForward'),
-  isExtendBackward: create('extendBackward'),
-  isExtendForward: create('extendForward'),
-  isExtendLineBackward: create('extendLineBackward'),
-  isExtendLineForward: create('extendLineForward'),
-  isItalic: create('italic'),
-  isMoveLineBackward: create('moveLineBackward'),
-  isMoveLineForward: create('moveLineForward'),
-  isMoveWordBackward: create('moveWordBackward'),
-  isMoveWordForward: create('moveWordForward'),
-  isRedo: create('redo'),
-  isSoftBreak: create('insertSoftBreak'),
-  isSplitBlock: create('splitBlock'),
-  isTransposeCharacter: create('transposeCharacter'),
-  isUndo: create('undo')
-};
-
-var createClass = createCommonjsModule(function (module) {
-function _defineProperties(target, props) {
-  for (var i = 0; i < props.length; i++) {
-    var descriptor = props[i];
-    descriptor.enumerable = descriptor.enumerable || false;
-    descriptor.configurable = true;
-    if ("value" in descriptor) descriptor.writable = true;
-    Object.defineProperty(target, descriptor.key, descriptor);
-  }
-}
-
-function _createClass(Constructor, protoProps, staticProps) {
-  if (protoProps) _defineProperties(Constructor.prototype, protoProps);
-  if (staticProps) _defineProperties(Constructor, staticProps);
-  return Constructor;
-}
-
-module.exports = _createClass;
-module.exports["default"] = module.exports, module.exports.__esModule = true;
-});
-
-var _createClass = unwrapExports(createClass);
-
-var setPrototypeOf = createCommonjsModule(function (module) {
-function _setPrototypeOf(o, p) {
-  module.exports = _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
-    o.__proto__ = p;
-    return o;
-  };
-
-  module.exports["default"] = module.exports, module.exports.__esModule = true;
-  return _setPrototypeOf(o, p);
-}
-
-module.exports = _setPrototypeOf;
-module.exports["default"] = module.exports, module.exports.__esModule = true;
-});
-
-unwrapExports(setPrototypeOf);
-
-var inherits = createCommonjsModule(function (module) {
-function _inherits(subClass, superClass) {
-  if (typeof superClass !== "function" && superClass !== null) {
-    throw new TypeError("Super expression must either be null or a function");
-  }
-
-  subClass.prototype = Object.create(superClass && superClass.prototype, {
-    constructor: {
-      value: subClass,
-      writable: true,
-      configurable: true
-    }
-  });
-  if (superClass) setPrototypeOf(subClass, superClass);
-}
-
-module.exports = _inherits;
-module.exports["default"] = module.exports, module.exports.__esModule = true;
-});
-
-var _inherits = unwrapExports(inherits);
-
-var _typeof_1 = createCommonjsModule(function (module) {
-function _typeof(obj) {
-  "@babel/helpers - typeof";
-
-  if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") {
-    module.exports = _typeof = function _typeof(obj) {
-      return typeof obj;
-    };
-
-    module.exports["default"] = module.exports, module.exports.__esModule = true;
-  } else {
-    module.exports = _typeof = function _typeof(obj) {
-      return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
-    };
-
-    module.exports["default"] = module.exports, module.exports.__esModule = true;
-  }
-
-  return _typeof(obj);
-}
-
-module.exports = _typeof;
-module.exports["default"] = module.exports, module.exports.__esModule = true;
-});
-
-unwrapExports(_typeof_1);
-
-var assertThisInitialized = createCommonjsModule(function (module) {
-function _assertThisInitialized(self) {
-  if (self === void 0) {
-    throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
-  }
-
-  return self;
-}
-
-module.exports = _assertThisInitialized;
-module.exports["default"] = module.exports, module.exports.__esModule = true;
-});
-
-unwrapExports(assertThisInitialized);
-
-var possibleConstructorReturn = createCommonjsModule(function (module) {
-var _typeof = _typeof_1["default"];
-
-
-
-function _possibleConstructorReturn(self, call) {
-  if (call && (_typeof(call) === "object" || typeof call === "function")) {
-    return call;
-  } else if (call !== void 0) {
-    throw new TypeError("Derived constructors may only return object or undefined");
-  }
-
-  return assertThisInitialized(self);
-}
-
-module.exports = _possibleConstructorReturn;
-module.exports["default"] = module.exports, module.exports.__esModule = true;
-});
-
-var _possibleConstructorReturn = unwrapExports(possibleConstructorReturn);
-
-var getPrototypeOf = createCommonjsModule(function (module) {
-function _getPrototypeOf(o) {
-  module.exports = _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
-    return o.__proto__ || Object.getPrototypeOf(o);
-  };
-  module.exports["default"] = module.exports, module.exports.__esModule = true;
-  return _getPrototypeOf(o);
-}
-
-module.exports = _getPrototypeOf;
-module.exports["default"] = module.exports, module.exports.__esModule = true;
-});
-
-var _getPrototypeOf = unwrapExports(getPrototypeOf);
-
-var createRestoreDomManager = function createRestoreDomManager(editor, receivedUserInput) {
-  var bufferedMutations = [];
-
-  var clear = function clear() {
-    bufferedMutations = [];
-  };
-
-  var registerMutations = function registerMutations(mutations) {
-    var _bufferedMutations;
-
-    if (!receivedUserInput.current) {
-      return;
-    }
-
-    var trackedMutations = mutations.filter(function (mutation) {
-      return isTrackedMutation(editor, mutation, mutations);
-    });
-
-    (_bufferedMutations = bufferedMutations).push.apply(_bufferedMutations, _toConsumableArray(trackedMutations));
-  };
-
-  function restoreDOM() {
-    bufferedMutations.reverse().forEach(function (mutation) {
-      if (mutation.type === 'characterData') {
-        mutation.target.textContent = mutation.oldValue;
-        return;
-      }
-
-      mutation.removedNodes.forEach(function (node) {
-        mutation.target.insertBefore(node, mutation.nextSibling);
-      });
-      mutation.addedNodes.forEach(function (node) {
-        mutation.target.removeChild(node);
-      });
-    }); // Clear buffered mutations to ensure we don't undo them twice
-
-    clear();
-  }
-
-  return {
-    registerMutations: registerMutations,
-    restoreDOM: restoreDOM,
-    clear: clear
-  };
-};
-
-function _createSuper(Derived) { var hasNativeReflectConstruct = _isNativeReflectConstruct(); return function _createSuperInternal() { var Super = _getPrototypeOf(Derived), result; if (hasNativeReflectConstruct) { var NewTarget = _getPrototypeOf(this).constructor; result = Reflect.construct(Super, arguments, NewTarget); } else { result = Super.apply(this, arguments); } return _possibleConstructorReturn(this, result); }; }
-
-function _isNativeReflectConstruct() { if (typeof Reflect === "undefined" || !Reflect.construct) return false; if (Reflect.construct.sham) return false; if (typeof Proxy === "function") return true; try { Boolean.prototype.valueOf.call(Reflect.construct(Boolean, [], function () {})); return true; } catch (e) { return false; } }
-var MUTATION_OBSERVER_CONFIG$1 = {
-  subtree: true,
-  childList: true,
-  characterData: true,
-  characterDataOldValue: true
-}; // We have to use a class component here since we rely on `getSnapshotBeforeUpdate` which has no FC equivalent
-// to run code synchronously immediately before react commits the component update to the DOM.
-
-var RestoreDOMComponent = /*#__PURE__*/function (_Component) {
-  _inherits(RestoreDOMComponent, _Component);
-
-  var _super = _createSuper(RestoreDOMComponent);
-
-  function RestoreDOMComponent() {
-    var _this;
-
-    _classCallCheck(this, RestoreDOMComponent);
-
-    _this = _super.apply(this, arguments);
-    _this.context = null;
-    _this.manager = null;
-    _this.mutationObserver = null;
-    return _this;
-  }
-
-  _createClass(RestoreDOMComponent, [{
-    key: "observe",
-    value: function observe() {
-      var _this$mutationObserve;
-
-      var node = this.props.node;
-
-      if (!node.current) {
-        throw new Error('Failed to attach MutationObserver, `node` is undefined');
-      }
-
-      (_this$mutationObserve = this.mutationObserver) === null || _this$mutationObserve === void 0 ? void 0 : _this$mutationObserve.observe(node.current, MUTATION_OBSERVER_CONFIG$1);
-    }
-  }, {
-    key: "componentDidMount",
-    value: function componentDidMount() {
-      var receivedUserInput = this.props.receivedUserInput;
-      var editor = this.context;
-      this.manager = createRestoreDomManager(editor, receivedUserInput);
-      this.mutationObserver = new MutationObserver(this.manager.registerMutations);
-      this.observe();
-    }
-  }, {
-    key: "getSnapshotBeforeUpdate",
-    value: function getSnapshotBeforeUpdate() {
-      var _this$mutationObserve2, _this$mutationObserve3, _this$manager2;
-
-      var pendingMutations = (_this$mutationObserve2 = this.mutationObserver) === null || _this$mutationObserve2 === void 0 ? void 0 : _this$mutationObserve2.takeRecords();
-
-      if (pendingMutations !== null && pendingMutations !== void 0 && pendingMutations.length) {
-        var _this$manager;
-
-        (_this$manager = this.manager) === null || _this$manager === void 0 ? void 0 : _this$manager.registerMutations(pendingMutations);
-      }
-
-      (_this$mutationObserve3 = this.mutationObserver) === null || _this$mutationObserve3 === void 0 ? void 0 : _this$mutationObserve3.disconnect();
-      (_this$manager2 = this.manager) === null || _this$manager2 === void 0 ? void 0 : _this$manager2.restoreDOM();
-      return null;
-    }
-  }, {
-    key: "componentDidUpdate",
-    value: function componentDidUpdate() {
-      var _this$manager3;
-
-      (_this$manager3 = this.manager) === null || _this$manager3 === void 0 ? void 0 : _this$manager3.clear();
-      this.observe();
-    }
-  }, {
-    key: "componentWillUnmount",
-    value: function componentWillUnmount() {
-      var _this$mutationObserve4;
-
-      (_this$mutationObserve4 = this.mutationObserver) === null || _this$mutationObserve4 === void 0 ? void 0 : _this$mutationObserve4.disconnect();
-    }
-  }, {
-    key: "render",
-    value: function render() {
-      return this.props.children;
-    }
-  }]);
-
-  return RestoreDOMComponent;
-}(React.Component);
-
-RestoreDOMComponent.contextType = EditorContext;
-var RestoreDOM = IS_ANDROID ? RestoreDOMComponent : function (_ref) {
-  var children = _ref.children;
-  return /*#__PURE__*/React__default['default'].createElement(React__default['default'].Fragment, null, children);
 };
 
 /**
@@ -3383,6 +2468,12 @@ function useIsMounted() {
   return isMountedRef.current;
 }
 
+/**
+ * Prevent warning on SSR by falling back to useEffect when DOM isn't available
+ */
+
+var useIsomorphicLayoutEffect = CAN_USE_DOM ? React.useLayoutEffect : React.useEffect;
+
 function useMutationObserver(node, callback, options) {
   var _useState = React.useState(function () {
     return new MutationObserver(callback);
@@ -3407,19 +2498,19 @@ function useMutationObserver(node, callback, options) {
   }, []);
 }
 
-var _excluded$2 = ["node"];
+var _excluded$3 = ["node"];
 
 function ownKeys$2(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) { symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); } keys.push.apply(keys, symbols); } return keys; }
 
 function _objectSpread$2(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$2(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$2(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
-var MUTATION_OBSERVER_CONFIG = {
+var MUTATION_OBSERVER_CONFIG$1 = {
   subtree: true,
   childList: true,
   characterData: true
 };
 function useAndroidInputManager(_ref) {
   var node = _ref.node,
-      options = _objectWithoutProperties(_ref, _excluded$2);
+      options = _objectWithoutProperties(_ref, _excluded$3);
 
   if (!IS_ANDROID) {
     return null;
@@ -3436,7 +2527,7 @@ function useAndroidInputManager(_ref) {
       _useState2 = _slicedToArray(_useState, 1),
       inputManager = _useState2[0];
 
-  useMutationObserver(node, inputManager.handleDomMutations, MUTATION_OBSERVER_CONFIG);
+  useMutationObserver(node, inputManager.handleDomMutations, MUTATION_OBSERVER_CONFIG$1);
   EDITOR_TO_SCHEDULE_FLUSH.set(editor, inputManager.scheduleFlush);
 
   if (isMounted) {
@@ -3445,6 +2536,575 @@ function useAndroidInputManager(_ref) {
 
   return inputManager;
 }
+
+var _excluded$2 = ["anchor", "focus"],
+    _excluded2$1 = ["anchor", "focus"];
+var shallowCompare = function shallowCompare(obj1, obj2) {
+  return Object.keys(obj1).length === Object.keys(obj2).length && Object.keys(obj1).every(function (key) {
+    return obj2.hasOwnProperty(key) && obj1[key] === obj2[key];
+  });
+};
+/**
+ * Check if a list of decorator ranges are equal to another.
+ *
+ * PERF: this requires the two lists to also have the ranges inside them in the
+ * same order, but this is an okay constraint for us since decorations are
+ * kept in order, and the odd case where they aren't is okay to re-render for.
+ */
+
+var isDecoratorRangeListEqual = function isDecoratorRangeListEqual(list, another) {
+  if (list.length !== another.length) {
+    return false;
+  }
+
+  for (var i = 0; i < list.length; i++) {
+    var range = list[i];
+    var other = another[i];
+
+    range.anchor;
+        range.focus;
+        var rangeOwnProps = _objectWithoutProperties(range, _excluded$2);
+
+    other.anchor;
+        other.focus;
+        var otherOwnProps = _objectWithoutProperties(other, _excluded2$1);
+
+    if (!slate.Range.equals(range, other) || range[PLACEHOLDER_SYMBOL] !== other[PLACEHOLDER_SYMBOL] || !shallowCompare(rangeOwnProps, otherOwnProps)) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
+/**
+ * Leaf content strings.
+ */
+
+var String = function String(props) {
+  var isLast = props.isLast,
+      leaf = props.leaf,
+      parent = props.parent,
+      text = props.text;
+  var editor = useSlateStatic();
+  var path = ReactEditor.findPath(editor, text);
+  var parentPath = slate.Path.parent(path);
+  var isMarkPlaceholder = leaf[MARK_PLACEHOLDER_SYMBOL] === true; // COMPAT: Render text inside void nodes with a zero-width space.
+  // So the node can contain selection but the text is not visible.
+
+  if (editor.isVoid(parent)) {
+    return /*#__PURE__*/React__default['default'].createElement(ZeroWidthString, {
+      length: slate.Node.string(parent).length
+    });
+  } // COMPAT: If this is the last text node in an empty block, render a zero-
+  // width space that will convert into a line break when copying and pasting
+  // to support expected plain text.
+
+
+  if (leaf.value === '' && parent.children[parent.children.length - 1] === text && !editor.isInline(parent) && slate.Editor.string(editor, parentPath) === '') {
+    return /*#__PURE__*/React__default['default'].createElement(ZeroWidthString, {
+      isLineBreak: true,
+      isMarkPlaceholder: isMarkPlaceholder
+    });
+  } // COMPAT: If the text is empty, it's because it's on the edge of an inline
+  // node, so we render a zero-width space so that the selection can be
+  // inserted next to it still.
+
+
+  if (leaf.value === '') {
+    return /*#__PURE__*/React__default['default'].createElement(ZeroWidthString, {
+      isMarkPlaceholder: isMarkPlaceholder
+    });
+  } // COMPAT: Browsers will collapse trailing new lines at the end of blocks,
+  // so we need to add an extra trailing new lines to prevent that.
+
+
+  if (isLast && leaf.value.slice(-1) === '\n') {
+    return /*#__PURE__*/React__default['default'].createElement(TextString, {
+      isTrailing: true,
+      text: leaf.value
+    });
+  }
+
+  return /*#__PURE__*/React__default['default'].createElement(TextString, {
+    text: leaf.value
+  });
+};
+/**
+ * Leaf strings with text in them.
+ */
+
+
+var TextString = function TextString(props) {
+  var text = props.text,
+      _props$isTrailing = props.isTrailing,
+      isTrailing = _props$isTrailing === void 0 ? false : _props$isTrailing;
+  var ref = React.useRef(null);
+
+  var getTextContent = function getTextContent() {
+    return "".concat(text !== null && text !== void 0 ? text : '').concat(isTrailing ? '\n' : '');
+  }; // This is the actual text rendering boundary where we interface with the DOM
+  // The text is not rendered as part of the virtual DOM, as since we handle basic character insertions natively,
+  // updating the DOM is not a one way dataflow anymore. What we need here is not reconciliation and diffing
+  // with previous version of the virtual DOM, but rather diffing with the actual DOM element, and replace the DOM <span> content
+  // exactly if and only if its current content does not match our current virtual DOM.
+  // Otherwise the DOM TextNode would always be replaced by React as the user types, which interferes with native text features,
+  // eg makes native spellcheck opt out from checking the text node.
+  // useLayoutEffect: updating our span before browser paint
+
+
+  useIsomorphicLayoutEffect(function () {
+    // null coalescing text to make sure we're not outputing "null" as a string in the extreme case it is nullish at runtime
+    var textWithTrailing = getTextContent();
+
+    if (ref.current && ref.current.textContent !== textWithTrailing) {
+      ref.current.textContent = textWithTrailing;
+    } // intentionally not specifying dependencies, so that this effect runs on every render
+    // as this effectively replaces "specifying the text in the virtual DOM under the <span> below" on each render
+
+  }); // Render text content immediately if it's the first-time render
+  // Ensure that text content is rendered on server-side rendering
+
+  if (!ref.current) {
+    return /*#__PURE__*/React__default['default'].createElement("span", {
+      "data-slate-string": true,
+      ref: ref
+    }, getTextContent());
+  } // the span is intentionally same on every render in virtual DOM, actual rendering happens in the layout effect above
+
+
+  return /*#__PURE__*/React__default['default'].createElement("span", {
+    "data-slate-string": true,
+    ref: ref
+  });
+};
+/**
+ * Leaf strings without text, render as zero-width strings.
+ */
+
+
+var ZeroWidthString = function ZeroWidthString(props) {
+  var _props$length = props.length,
+      length = _props$length === void 0 ? 0 : _props$length,
+      _props$isLineBreak = props.isLineBreak,
+      isLineBreak = _props$isLineBreak === void 0 ? false : _props$isLineBreak,
+      _props$isMarkPlacehol = props.isMarkPlaceholder,
+      isMarkPlaceholder = _props$isMarkPlacehol === void 0 ? false : _props$isMarkPlacehol;
+  var attributes = {
+    'data-slate-zero-width': isLineBreak ? 'n' : 'z',
+    'data-slate-length': length
+  };
+
+  if (isMarkPlaceholder) {
+    attributes['data-slate-mark-placeholder'] = true;
+  }
+
+  return /*#__PURE__*/React__default['default'].createElement("span", Object.assign({}, attributes), !IS_ANDROID || !isLineBreak ? "\uFEFF" : null, isLineBreak ? /*#__PURE__*/React__default['default'].createElement("br", null) : null);
+};
+
+/**
+ * Individual leaves in a text node with unique formatting.
+ */
+
+var Leaf = function Leaf(props) {
+  var leaf = props.leaf,
+      isLast = props.isLast,
+      text = props.text,
+      parent = props.parent,
+      renderPlaceholder = props.renderPlaceholder,
+      _props$renderLeaf = props.renderLeaf,
+      renderLeaf = _props$renderLeaf === void 0 ? function (props) {
+    return /*#__PURE__*/React__default['default'].createElement(DefaultLeaf, Object.assign({}, props));
+  } : _props$renderLeaf;
+  var placeholderRef = React.useRef(null);
+  var editor = useSlateStatic();
+  React.useEffect(function () {
+    var placeholderEl = placeholderRef === null || placeholderRef === void 0 ? void 0 : placeholderRef.current;
+    var editorEl = ReactEditor.toDOMNode(editor, editor);
+
+    if (!placeholderEl || !editorEl) {
+      return;
+    }
+
+    editorEl.style.minHeight = "".concat(placeholderEl.clientHeight, "px");
+    EDITOR_TO_PLACEHOLDER_ELEMENT.set(editor, placeholderEl);
+    return function () {
+      editorEl.style.minHeight = 'auto';
+      EDITOR_TO_PLACEHOLDER_ELEMENT["delete"](editor);
+    };
+  }, [placeholderRef, leaf]);
+  var children = /*#__PURE__*/React__default['default'].createElement(String, {
+    isLast: isLast,
+    leaf: leaf,
+    parent: parent,
+    text: text
+  });
+
+  if (leaf[PLACEHOLDER_SYMBOL]) {
+    var placeholderProps = {
+      children: leaf.placeholder,
+      attributes: {
+        'data-slate-placeholder': true,
+        style: {
+          position: 'absolute',
+          pointerEvents: 'none',
+          width: '100%',
+          maxWidth: '100%',
+          display: 'block',
+          opacity: '0.333',
+          userSelect: 'none',
+          textDecoration: 'none'
+        },
+        contentEditable: false,
+        ref: placeholderRef
+      }
+    };
+    children = /*#__PURE__*/React__default['default'].createElement(React__default['default'].Fragment, null, renderPlaceholder(placeholderProps), children);
+  } // COMPAT: Having the `data-` attributes on these leaf elements ensures that
+  // in certain misbehaving browsers they aren't weirdly cloned/destroyed by
+  // contenteditable behaviors. (2019/05/08)
+
+
+  var attributes = {
+    'data-slate-leaf': true
+  };
+  return renderLeaf({
+    attributes: attributes,
+    children: children,
+    leaf: leaf,
+    text: text
+  });
+};
+
+var MemoizedLeaf = /*#__PURE__*/React__default['default'].memo(Leaf, function (prev, next) {
+  return next.parent === prev.parent && next.isLast === prev.isLast && next.renderLeaf === prev.renderLeaf && next.renderPlaceholder === prev.renderPlaceholder && next.text === prev.text && slate.Text.equals(next.leaf, prev.leaf) && next.leaf[PLACEHOLDER_SYMBOL] === prev.leaf[PLACEHOLDER_SYMBOL];
+});
+var DefaultLeaf = function DefaultLeaf(props) {
+  var attributes = props.attributes,
+      children = props.children;
+  return /*#__PURE__*/React__default['default'].createElement("span", Object.assign({}, attributes), children);
+};
+
+/**
+ * Text.
+ */
+
+var Text = function Text(props) {
+  var decorations = props.decorations,
+      isLast = props.isLast,
+      parent = props.parent,
+      renderPlaceholder = props.renderPlaceholder,
+      renderLeaf = props.renderLeaf,
+      text = props.text;
+  var editor = useSlateStatic();
+  var ref = React.useRef(null);
+  var leaves = slate.Text.decorations(text, decorations);
+  var key = ReactEditor.findKey(editor, text);
+  var children = [];
+
+  for (var i = 0; i < leaves.length; i++) {
+    var leaf = leaves[i];
+    children.push( /*#__PURE__*/React__default['default'].createElement(MemoizedLeaf, {
+      isLast: isLast && i === leaves.length - 1,
+      key: "".concat(key.id, "-").concat(i),
+      renderPlaceholder: renderPlaceholder,
+      leaf: leaf,
+      text: text,
+      parent: parent,
+      renderLeaf: renderLeaf
+    }));
+  } // Update element-related weak maps with the DOM element ref.
+
+
+  useIsomorphicLayoutEffect(function () {
+    var KEY_TO_ELEMENT = EDITOR_TO_KEY_TO_ELEMENT.get(editor);
+
+    if (ref.current) {
+      KEY_TO_ELEMENT === null || KEY_TO_ELEMENT === void 0 ? void 0 : KEY_TO_ELEMENT.set(key, ref.current);
+      NODE_TO_ELEMENT.set(text, ref.current);
+      ELEMENT_TO_NODE.set(ref.current, text);
+    } else {
+      KEY_TO_ELEMENT === null || KEY_TO_ELEMENT === void 0 ? void 0 : KEY_TO_ELEMENT["delete"](key);
+      NODE_TO_ELEMENT["delete"](text);
+    }
+  });
+  return /*#__PURE__*/React__default['default'].createElement("span", {
+    "data-slate-node": "text",
+    ref: ref
+  }, children);
+};
+
+var MemoizedText = /*#__PURE__*/React__default['default'].memo(Text, function (prev, next) {
+  return next.parent === prev.parent && next.isLast === prev.isLast && next.renderLeaf === prev.renderLeaf && next.text === prev.text && isDecoratorRangeListEqual(next.decorations, prev.decorations);
+});
+
+/**
+ * Element.
+ */
+
+var Element = function Element(props) {
+  var decorations = props.decorations,
+      element = props.element,
+      _props$renderElement = props.renderElement,
+      renderElement = _props$renderElement === void 0 ? function (p) {
+    return /*#__PURE__*/React__default['default'].createElement(DefaultElement, Object.assign({}, p));
+  } : _props$renderElement,
+      renderPlaceholder = props.renderPlaceholder,
+      renderLeaf = props.renderLeaf,
+      selection = props.selection;
+  var editor = useSlateStatic();
+  var readOnly = useReadOnly();
+  var isInline = editor.isInline(element);
+  var key = ReactEditor.findKey(editor, element);
+  var ref = React.useCallback(function (ref) {
+    // Update element-related weak maps with the DOM element ref.
+    var KEY_TO_ELEMENT = EDITOR_TO_KEY_TO_ELEMENT.get(editor);
+
+    if (ref) {
+      KEY_TO_ELEMENT === null || KEY_TO_ELEMENT === void 0 ? void 0 : KEY_TO_ELEMENT.set(key, ref);
+      NODE_TO_ELEMENT.set(element, ref);
+      ELEMENT_TO_NODE.set(ref, element);
+    } else {
+      KEY_TO_ELEMENT === null || KEY_TO_ELEMENT === void 0 ? void 0 : KEY_TO_ELEMENT["delete"](key);
+      NODE_TO_ELEMENT["delete"](element);
+    }
+  }, [editor, key, element]);
+  var children = useChildren({
+    decorations: decorations,
+    node: element,
+    renderElement: renderElement,
+    renderPlaceholder: renderPlaceholder,
+    renderLeaf: renderLeaf,
+    selection: selection
+  }); // Attributes that the developer must mix into the element in their
+  // custom node renderer component.
+
+  var attributes = {
+    'data-slate-node': 'element',
+    ref: ref
+  };
+
+  if (isInline) {
+    attributes['data-slate-inline'] = true;
+  } // If it's a block node with inline children, add the proper `dir` attribute
+  // for text direction.
+
+
+  if (!isInline && slate.Editor.hasInlines(editor, element)) {
+    var text = slate.Node.string(element);
+    var dir = getDirection__default['default'](text);
+
+    if (dir === 'rtl') {
+      attributes.dir = dir;
+    }
+  } // If it's a void node, wrap the children in extra void-specific elements.
+
+
+  if (slate.Editor.isVoid(editor, element)) {
+    attributes['data-slate-void'] = true;
+
+    if (!readOnly && isInline) {
+      attributes.contentEditable = false;
+    }
+
+    var Tag = isInline ? 'span' : 'div';
+
+    var _Node$texts = slate.Node.texts(element),
+        _Node$texts2 = _slicedToArray(_Node$texts, 1),
+        _Node$texts2$ = _slicedToArray(_Node$texts2[0], 1),
+        _text = _Node$texts2$[0];
+
+    children = /*#__PURE__*/React__default['default'].createElement(Tag, {
+      "data-slate-spacer": true,
+      style: {
+        height: '0',
+        color: 'transparent',
+        outline: 'none',
+        position: 'absolute'
+      }
+    }, /*#__PURE__*/React__default['default'].createElement(MemoizedText, {
+      renderPlaceholder: renderPlaceholder,
+      decorations: [],
+      isLast: false,
+      parent: element,
+      text: _text
+    }));
+    NODE_TO_INDEX.set(_text, 0);
+    NODE_TO_PARENT.set(_text, element);
+  }
+
+  return renderElement({
+    attributes: attributes,
+    children: children,
+    element: element
+  });
+};
+
+var MemoizedElement = /*#__PURE__*/React__default['default'].memo(Element, function (prev, next) {
+  return prev.element === next.element && prev.renderElement === next.renderElement && prev.renderLeaf === next.renderLeaf && isDecoratorRangeListEqual(prev.decorations, next.decorations) && (prev.selection === next.selection || !!prev.selection && !!next.selection && slate.Range.equals(prev.selection, next.selection));
+});
+/**
+ * The default element renderer.
+ */
+
+var DefaultElement = function DefaultElement(props) {
+  var attributes = props.attributes,
+      children = props.children,
+      element = props.element;
+  var editor = useSlateStatic();
+  var Tag = editor.isInline(element) ? 'span' : 'div';
+  return /*#__PURE__*/React__default['default'].createElement(Tag, Object.assign({}, attributes, {
+    style: {
+      position: 'relative'
+    }
+  }), children);
+};
+
+/**
+ * A React context for sharing the `decorate` prop of the editable.
+ */
+
+var DecorateContext = /*#__PURE__*/React.createContext(function () {
+  return [];
+});
+/**
+ * Get the current `decorate` prop of the editable.
+ */
+
+var useDecorate = function useDecorate() {
+  return React.useContext(DecorateContext);
+};
+
+/**
+ * A React context for sharing the `selected` state of an element.
+ */
+
+var SelectedContext = /*#__PURE__*/React.createContext(false);
+/**
+ * Get the current `selected` state of an element.
+ */
+
+var useSelected = function useSelected() {
+  return React.useContext(SelectedContext);
+};
+
+function _createForOfIteratorHelper$2(o, allowArrayLike) { var it = typeof Symbol !== "undefined" && o[Symbol.iterator] || o["@@iterator"]; if (!it) { if (Array.isArray(o) || (it = _unsupportedIterableToArray$2(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = it.call(o); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
+
+function _unsupportedIterableToArray$2(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray$2(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray$2(o, minLen); }
+
+function _arrayLikeToArray$2(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
+/**
+ * Children.
+ */
+
+var useChildren = function useChildren(props) {
+  var decorations = props.decorations,
+      node = props.node,
+      renderElement = props.renderElement,
+      renderPlaceholder = props.renderPlaceholder,
+      renderLeaf = props.renderLeaf,
+      selection = props.selection;
+  var decorate = useDecorate();
+  var editor = useSlateStatic();
+  var path = ReactEditor.findPath(editor, node);
+  var children = [];
+  var isLeafBlock = slate.Element.isElement(node) && !editor.isInline(node) && slate.Editor.hasInlines(editor, node);
+
+  for (var i = 0; i < node.children.length; i++) {
+    var p = path.concat(i);
+    var n = node.children[i];
+    var key = ReactEditor.findKey(editor, n);
+    var range = slate.Editor.range(editor, p);
+    var sel = selection && slate.Range.intersection(range, selection);
+    var ds = decorate([n, p]);
+
+    var _iterator = _createForOfIteratorHelper$2(decorations),
+        _step;
+
+    try {
+      for (_iterator.s(); !(_step = _iterator.n()).done;) {
+        var dec = _step.value;
+        var d = slate.Range.intersection(dec, range);
+
+        if (d) {
+          ds.push(d);
+        }
+      }
+    } catch (err) {
+      _iterator.e(err);
+    } finally {
+      _iterator.f();
+    }
+
+    if (slate.Element.isElement(n)) {
+      children.push( /*#__PURE__*/React__default['default'].createElement(SelectedContext.Provider, {
+        key: "provider-".concat(key.id),
+        value: !!sel
+      }, /*#__PURE__*/React__default['default'].createElement(MemoizedElement, {
+        decorations: ds,
+        element: n,
+        key: key.id,
+        renderElement: renderElement,
+        renderPlaceholder: renderPlaceholder,
+        renderLeaf: renderLeaf,
+        selection: sel
+      })));
+    } else {
+      children.push( /*#__PURE__*/React__default['default'].createElement(MemoizedText, {
+        decorations: ds,
+        key: key.id,
+        isLast: isLeafBlock && i === node.children.length - 1,
+        parent: node,
+        renderPlaceholder: renderPlaceholder,
+        renderLeaf: renderLeaf,
+        text: n
+      }));
+    }
+
+    NODE_TO_INDEX.set(n, i);
+    NODE_TO_PARENT.set(n, node);
+  }
+
+  return children;
+};
+
+/**
+ * A React context for sharing the `readOnly` state of the editor.
+ */
+
+var ReadOnlyContext = /*#__PURE__*/React.createContext(false);
+/**
+ * Get the current `readOnly` state of the editor.
+ */
+
+var useReadOnly = function useReadOnly() {
+  return React.useContext(ReadOnlyContext);
+};
+
+var SlateContext = /*#__PURE__*/React.createContext(null);
+/**
+ * Get the current editor object from the React context.
+ */
+
+var useSlate = function useSlate() {
+  var context = React.useContext(SlateContext);
+
+  if (!context) {
+    throw new Error("The `useSlate` hook must be used inside the <Slate> component's context.");
+  }
+
+  var editor = context.editor;
+  return editor;
+};
+var useSlateWithV = function useSlateWithV() {
+  var context = React.useContext(SlateContext);
+
+  if (!context) {
+    throw new Error("The `useSlate` hook must be used inside the <Slate> component's context.");
+  }
+
+  return context;
+};
 
 function useTrackUserInput() {
   var editor = useSlateStatic();
@@ -3473,9 +3133,385 @@ function useTrackUserInput() {
   };
 }
 
+var TRIPLE_CLICK = 3;
+
+/**
+ * Hotkey mappings for each platform.
+ */
+
+var HOTKEYS = {
+  bold: 'mod+b',
+  compose: ['down', 'left', 'right', 'up', 'backspace', 'enter'],
+  moveBackward: 'left',
+  moveForward: 'right',
+  moveWordBackward: 'ctrl+left',
+  moveWordForward: 'ctrl+right',
+  deleteBackward: 'shift?+backspace',
+  deleteForward: 'shift?+delete',
+  extendBackward: 'shift+left',
+  extendForward: 'shift+right',
+  italic: 'mod+i',
+  insertSoftBreak: 'shift+enter',
+  splitBlock: 'enter',
+  undo: 'mod+z'
+};
+var APPLE_HOTKEYS = {
+  moveLineBackward: 'opt+up',
+  moveLineForward: 'opt+down',
+  moveWordBackward: 'opt+left',
+  moveWordForward: 'opt+right',
+  deleteBackward: ['ctrl+backspace', 'ctrl+h'],
+  deleteForward: ['ctrl+delete', 'ctrl+d'],
+  deleteLineBackward: 'cmd+shift?+backspace',
+  deleteLineForward: ['cmd+shift?+delete', 'ctrl+k'],
+  deleteWordBackward: 'opt+shift?+backspace',
+  deleteWordForward: 'opt+shift?+delete',
+  extendLineBackward: 'opt+shift+up',
+  extendLineForward: 'opt+shift+down',
+  redo: 'cmd+shift+z',
+  transposeCharacter: 'ctrl+t'
+};
+var WINDOWS_HOTKEYS = {
+  deleteWordBackward: 'ctrl+shift?+backspace',
+  deleteWordForward: 'ctrl+shift?+delete',
+  redo: ['ctrl+y', 'ctrl+shift+z']
+};
+/**
+ * Create a platform-aware hotkey checker.
+ */
+
+var create = function create(key) {
+  var generic = HOTKEYS[key];
+  var apple = APPLE_HOTKEYS[key];
+  var windows = WINDOWS_HOTKEYS[key];
+  var isGeneric = generic && isHotkey.isKeyHotkey(generic);
+  var isApple = apple && isHotkey.isKeyHotkey(apple);
+  var isWindows = windows && isHotkey.isKeyHotkey(windows);
+  return function (event) {
+    if (isGeneric && isGeneric(event)) return true;
+    if (IS_APPLE && isApple && isApple(event)) return true;
+    if (!IS_APPLE && isWindows && isWindows(event)) return true;
+    return false;
+  };
+};
+/**
+ * Hotkeys.
+ */
+
+
+var Hotkeys = {
+  isBold: create('bold'),
+  isCompose: create('compose'),
+  isMoveBackward: create('moveBackward'),
+  isMoveForward: create('moveForward'),
+  isDeleteBackward: create('deleteBackward'),
+  isDeleteForward: create('deleteForward'),
+  isDeleteLineBackward: create('deleteLineBackward'),
+  isDeleteLineForward: create('deleteLineForward'),
+  isDeleteWordBackward: create('deleteWordBackward'),
+  isDeleteWordForward: create('deleteWordForward'),
+  isExtendBackward: create('extendBackward'),
+  isExtendForward: create('extendForward'),
+  isExtendLineBackward: create('extendLineBackward'),
+  isExtendLineForward: create('extendLineForward'),
+  isItalic: create('italic'),
+  isMoveLineBackward: create('moveLineBackward'),
+  isMoveLineForward: create('moveLineForward'),
+  isMoveWordBackward: create('moveWordBackward'),
+  isMoveWordForward: create('moveWordForward'),
+  isRedo: create('redo'),
+  isSoftBreak: create('insertSoftBreak'),
+  isSplitBlock: create('splitBlock'),
+  isTransposeCharacter: create('transposeCharacter'),
+  isUndo: create('undo')
+};
+
+var createClass = createCommonjsModule(function (module) {
+function _defineProperties(target, props) {
+  for (var i = 0; i < props.length; i++) {
+    var descriptor = props[i];
+    descriptor.enumerable = descriptor.enumerable || false;
+    descriptor.configurable = true;
+    if ("value" in descriptor) descriptor.writable = true;
+    Object.defineProperty(target, descriptor.key, descriptor);
+  }
+}
+
+function _createClass(Constructor, protoProps, staticProps) {
+  if (protoProps) _defineProperties(Constructor.prototype, protoProps);
+  if (staticProps) _defineProperties(Constructor, staticProps);
+  return Constructor;
+}
+
+module.exports = _createClass;
+module.exports["default"] = module.exports, module.exports.__esModule = true;
+});
+
+var _createClass = unwrapExports(createClass);
+
+var setPrototypeOf = createCommonjsModule(function (module) {
+function _setPrototypeOf(o, p) {
+  module.exports = _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
+    o.__proto__ = p;
+    return o;
+  };
+
+  module.exports["default"] = module.exports, module.exports.__esModule = true;
+  return _setPrototypeOf(o, p);
+}
+
+module.exports = _setPrototypeOf;
+module.exports["default"] = module.exports, module.exports.__esModule = true;
+});
+
+unwrapExports(setPrototypeOf);
+
+var inherits = createCommonjsModule(function (module) {
+function _inherits(subClass, superClass) {
+  if (typeof superClass !== "function" && superClass !== null) {
+    throw new TypeError("Super expression must either be null or a function");
+  }
+
+  subClass.prototype = Object.create(superClass && superClass.prototype, {
+    constructor: {
+      value: subClass,
+      writable: true,
+      configurable: true
+    }
+  });
+  if (superClass) setPrototypeOf(subClass, superClass);
+}
+
+module.exports = _inherits;
+module.exports["default"] = module.exports, module.exports.__esModule = true;
+});
+
+var _inherits = unwrapExports(inherits);
+
+var _typeof_1 = createCommonjsModule(function (module) {
+function _typeof(obj) {
+  "@babel/helpers - typeof";
+
+  if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") {
+    module.exports = _typeof = function _typeof(obj) {
+      return typeof obj;
+    };
+
+    module.exports["default"] = module.exports, module.exports.__esModule = true;
+  } else {
+    module.exports = _typeof = function _typeof(obj) {
+      return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
+    };
+
+    module.exports["default"] = module.exports, module.exports.__esModule = true;
+  }
+
+  return _typeof(obj);
+}
+
+module.exports = _typeof;
+module.exports["default"] = module.exports, module.exports.__esModule = true;
+});
+
+unwrapExports(_typeof_1);
+
+var assertThisInitialized = createCommonjsModule(function (module) {
+function _assertThisInitialized(self) {
+  if (self === void 0) {
+    throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
+  }
+
+  return self;
+}
+
+module.exports = _assertThisInitialized;
+module.exports["default"] = module.exports, module.exports.__esModule = true;
+});
+
+unwrapExports(assertThisInitialized);
+
+var possibleConstructorReturn = createCommonjsModule(function (module) {
+var _typeof = _typeof_1["default"];
+
+
+
+function _possibleConstructorReturn(self, call) {
+  if (call && (_typeof(call) === "object" || typeof call === "function")) {
+    return call;
+  } else if (call !== void 0) {
+    throw new TypeError("Derived constructors may only return object or undefined");
+  }
+
+  return assertThisInitialized(self);
+}
+
+module.exports = _possibleConstructorReturn;
+module.exports["default"] = module.exports, module.exports.__esModule = true;
+});
+
+var _possibleConstructorReturn = unwrapExports(possibleConstructorReturn);
+
+var getPrototypeOf = createCommonjsModule(function (module) {
+function _getPrototypeOf(o) {
+  module.exports = _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
+    return o.__proto__ || Object.getPrototypeOf(o);
+  };
+  module.exports["default"] = module.exports, module.exports.__esModule = true;
+  return _getPrototypeOf(o);
+}
+
+module.exports = _getPrototypeOf;
+module.exports["default"] = module.exports, module.exports.__esModule = true;
+});
+
+var _getPrototypeOf = unwrapExports(getPrototypeOf);
+
+var createRestoreDomManager = function createRestoreDomManager(editor, receivedUserInput) {
+  var bufferedMutations = [];
+
+  var clear = function clear() {
+    bufferedMutations = [];
+  };
+
+  var registerMutations = function registerMutations(mutations) {
+    var _bufferedMutations;
+
+    if (!receivedUserInput.current) {
+      return;
+    }
+
+    var trackedMutations = mutations.filter(function (mutation) {
+      return isTrackedMutation(editor, mutation, mutations);
+    });
+
+    (_bufferedMutations = bufferedMutations).push.apply(_bufferedMutations, _toConsumableArray(trackedMutations));
+  };
+
+  function restoreDOM() {
+    bufferedMutations.reverse().forEach(function (mutation) {
+      if (mutation.type === 'characterData') {
+        mutation.target.textContent = mutation.oldValue;
+        return;
+      }
+
+      mutation.removedNodes.forEach(function (node) {
+        mutation.target.insertBefore(node, mutation.nextSibling);
+      });
+      mutation.addedNodes.forEach(function (node) {
+        mutation.target.removeChild(node);
+      });
+    }); // Clear buffered mutations to ensure we don't undo them twice
+
+    clear();
+  }
+
+  return {
+    registerMutations: registerMutations,
+    restoreDOM: restoreDOM,
+    clear: clear
+  };
+};
+
+function _createSuper(Derived) { var hasNativeReflectConstruct = _isNativeReflectConstruct(); return function _createSuperInternal() { var Super = _getPrototypeOf(Derived), result; if (hasNativeReflectConstruct) { var NewTarget = _getPrototypeOf(this).constructor; result = Reflect.construct(Super, arguments, NewTarget); } else { result = Super.apply(this, arguments); } return _possibleConstructorReturn(this, result); }; }
+
+function _isNativeReflectConstruct() { if (typeof Reflect === "undefined" || !Reflect.construct) return false; if (Reflect.construct.sham) return false; if (typeof Proxy === "function") return true; try { Boolean.prototype.valueOf.call(Reflect.construct(Boolean, [], function () {})); return true; } catch (e) { return false; } }
+var MUTATION_OBSERVER_CONFIG = {
+  subtree: true,
+  childList: true,
+  characterData: true,
+  characterDataOldValue: true
+}; // We have to use a class component here since we rely on `getSnapshotBeforeUpdate` which has no FC equivalent
+// to run code synchronously immediately before react commits the component update to the DOM.
+
+var RestoreDOMComponent = /*#__PURE__*/function (_Component) {
+  _inherits(RestoreDOMComponent, _Component);
+
+  var _super = _createSuper(RestoreDOMComponent);
+
+  function RestoreDOMComponent() {
+    var _this;
+
+    _classCallCheck(this, RestoreDOMComponent);
+
+    _this = _super.apply(this, arguments);
+    _this.context = null;
+    _this.manager = null;
+    _this.mutationObserver = null;
+    return _this;
+  }
+
+  _createClass(RestoreDOMComponent, [{
+    key: "observe",
+    value: function observe() {
+      var _this$mutationObserve;
+
+      var node = this.props.node;
+
+      if (!node.current) {
+        throw new Error('Failed to attach MutationObserver, `node` is undefined');
+      }
+
+      (_this$mutationObserve = this.mutationObserver) === null || _this$mutationObserve === void 0 ? void 0 : _this$mutationObserve.observe(node.current, MUTATION_OBSERVER_CONFIG);
+    }
+  }, {
+    key: "componentDidMount",
+    value: function componentDidMount() {
+      var receivedUserInput = this.props.receivedUserInput;
+      var editor = this.context;
+      this.manager = createRestoreDomManager(editor, receivedUserInput);
+      this.mutationObserver = new MutationObserver(this.manager.registerMutations);
+      this.observe();
+    }
+  }, {
+    key: "getSnapshotBeforeUpdate",
+    value: function getSnapshotBeforeUpdate() {
+      var _this$mutationObserve2, _this$mutationObserve3, _this$manager2;
+
+      var pendingMutations = (_this$mutationObserve2 = this.mutationObserver) === null || _this$mutationObserve2 === void 0 ? void 0 : _this$mutationObserve2.takeRecords();
+
+      if (pendingMutations !== null && pendingMutations !== void 0 && pendingMutations.length) {
+        var _this$manager;
+
+        (_this$manager = this.manager) === null || _this$manager === void 0 ? void 0 : _this$manager.registerMutations(pendingMutations);
+      }
+
+      (_this$mutationObserve3 = this.mutationObserver) === null || _this$mutationObserve3 === void 0 ? void 0 : _this$mutationObserve3.disconnect();
+      (_this$manager2 = this.manager) === null || _this$manager2 === void 0 ? void 0 : _this$manager2.restoreDOM();
+      return null;
+    }
+  }, {
+    key: "componentDidUpdate",
+    value: function componentDidUpdate() {
+      var _this$manager3;
+
+      (_this$manager3 = this.manager) === null || _this$manager3 === void 0 ? void 0 : _this$manager3.clear();
+      this.observe();
+    }
+  }, {
+    key: "componentWillUnmount",
+    value: function componentWillUnmount() {
+      var _this$mutationObserve4;
+
+      (_this$mutationObserve4 = this.mutationObserver) === null || _this$mutationObserve4 === void 0 ? void 0 : _this$mutationObserve4.disconnect();
+    }
+  }, {
+    key: "render",
+    value: function render() {
+      return this.props.children;
+    }
+  }]);
+
+  return RestoreDOMComponent;
+}(React.Component);
+
+RestoreDOMComponent.contextType = EditorContext;
+var RestoreDOM = IS_ANDROID ? RestoreDOMComponent : function (_ref) {
+  var children = _ref.children;
+  return /*#__PURE__*/React__default['default'].createElement(React__default['default'].Fragment, null, children);
+};
+
 var _excluded$1 = ["autoFocus", "decorate", "onDOMBeforeInput", "placeholder", "readOnly", "renderElement", "renderLeaf", "renderPlaceholder", "scrollSelectionIntoView", "style", "as"],
-    _excluded2 = ["value"],
-    _excluded3 = ["value"];
+    _excluded2 = ["value"];
 
 function _createForOfIteratorHelper$1(o, allowArrayLike) { var it = typeof Symbol !== "undefined" && o[Symbol.iterator] || o["@@iterator"]; if (!it) { if (Array.isArray(o) || (it = _unsupportedIterableToArray$1(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = it.call(o); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
 
@@ -3581,8 +3617,8 @@ var Editable = function Editable(props) {
 
       var anchorNode = domSelection.anchorNode,
           focusNode = domSelection.focusNode;
-      var anchorNodeSelectable = hasEditableTarget(editor, anchorNode) || isTargetInsideNonReadonlyVoid(editor, anchorNode);
-      var focusNodeSelectable = hasEditableTarget(editor, focusNode) || isTargetInsideNonReadonlyVoid(editor, focusNode);
+      var anchorNodeSelectable = ReactEditor.hasEditableTarget(editor, anchorNode) || ReactEditor.isTargetInsideNonReadonlyVoid(editor, anchorNode);
+      var focusNodeSelectable = ReactEditor.hasEditableTarget(editor, focusNode) || ReactEditor.isTargetInsideNonReadonlyVoid(editor, focusNode);
 
       if (anchorNodeSelectable && focusNodeSelectable) {
         var range = ReactEditor.toSlateRange(editor, domSelection, {
@@ -3597,6 +3633,11 @@ var Editable = function Editable(props) {
             androidInputManager === null || androidInputManager === void 0 ? void 0 : androidInputManager.handleUserSelect(range);
           }
         }
+      } // Deselect the editor if the dom selection is not selectable in readonly mode
+
+
+      if (readOnly && (!anchorNodeSelectable || !focusNodeSelectable)) {
+        slate.Transforms.deselect(editor);
       }
     }
   }, 100), [readOnly]);
@@ -3759,7 +3800,7 @@ var Editable = function Editable(props) {
   var onDOMBeforeInput = React.useCallback(function (event) {
     onUserInput();
 
-    if (!readOnly && hasEditableTarget(editor, event.target) && !isDOMEventHandled(event, propsOnDOMBeforeInput)) {
+    if (!readOnly && ReactEditor.hasEditableTarget(editor, event.target) && !isDOMEventHandled(event, propsOnDOMBeforeInput)) {
       var _EDITOR_TO_USER_SELEC;
 
       // COMPAT: BeforeInput events aren't cancelable on android, so we have to handle them differently using the android input manager.
@@ -3983,14 +4024,6 @@ var Editable = function Editable(props) {
         case 'insertReplacementText':
         case 'insertText':
           {
-            var _selection = editor.selection;
-
-            if (_selection) {
-              if (slate.Range.isExpanded(_selection)) {
-                slate.Editor.deleteFragment(editor);
-              }
-            }
-
             if (type === 'insertFromComposition') {
               // COMPAT: in Safari, `compositionend` is dispatched after the
               // `beforeinput` for "insertFromComposition". But if we wait for it
@@ -4076,12 +4109,14 @@ var Editable = function Editable(props) {
 
   if (editor.selection && slate.Range.isCollapsed(editor.selection) && marks) {
     var anchor = editor.selection.anchor;
+    var leaf = slate.Node.leaf(editor, anchor.path);
 
-    var _Node$leaf = slate.Node.leaf(editor, anchor.path);
-        _Node$leaf.value;
-        var rest = _objectWithoutProperties(_Node$leaf, _excluded2);
+    leaf.value;
+        var rest = _objectWithoutProperties(leaf, _excluded2); // While marks isn't a 'complete' text, we can still use loose Text.equals
+    // here which only compares marks anyway.
 
-    if (!slate.Text.equals(rest, marks, {
+
+    if (!slate.Text.equals(leaf, marks, {
       loose: true
     })) {
       state.hasMarkPlaceholder = true;
@@ -4103,12 +4138,10 @@ var Editable = function Editable(props) {
 
       if (selection) {
         var _anchor = selection.anchor;
+        var text = slate.Node.leaf(editor, _anchor.path); // While marks isn't a 'complete' text, we can still use loose Text.equals
+        // here which only compares marks anyway.
 
-        var _Node$leaf2 = slate.Node.leaf(editor, _anchor.path);
-            _Node$leaf2.value;
-            var _rest = _objectWithoutProperties(_Node$leaf2, _excluded3);
-
-        if (!slate.Text.equals(_rest, marks, {
+        if (marks && !slate.Text.equals(text, marks, {
           loose: true
         })) {
           EDITOR_TO_PENDING_INSERTION_MARKS.set(editor, marks);
@@ -4127,7 +4160,8 @@ var Editable = function Editable(props) {
     node: ref,
     receivedUserInput: receivedUserInput
   }, /*#__PURE__*/React__default['default'].createElement(Component, Object.assign({
-    role: readOnly ? undefined : 'textbox'
+    role: readOnly ? undefined : 'textbox',
+    "aria-multiline": readOnly ? undefined : true
   }, attributes, {
     // COMPAT: Certain browsers don't support the `beforeinput` event, so we'd
     // have to use hacks to make these replacement-based features work.
@@ -4161,7 +4195,7 @@ var Editable = function Editable(props) {
       // COMPAT: Certain browsers don't support the `beforeinput` event, so we
       // fall back to React's leaky polyfill instead just for it. It
       // only works for the `insertText` input type.
-      if (!HAS_BEFORE_INPUT_SUPPORT && !readOnly && !isEventHandled(event, attributes.onBeforeInput) && hasEditableTarget(editor, event.target)) {
+      if (!HAS_BEFORE_INPUT_SUPPORT && !readOnly && !isEventHandled(event, attributes.onBeforeInput) && ReactEditor.hasSelectableTarget(editor, event.target)) {
         event.preventDefault();
 
         if (!ReactEditor.isComposing(editor)) {
@@ -4197,7 +4231,7 @@ var Editable = function Editable(props) {
       deferredOperations.current = [];
     }, []),
     onBlur: React.useCallback(function (event) {
-      if (readOnly || state.isUpdatingSelection || !hasEditableTarget(editor, event.target) || isEventHandled(event, attributes.onBlur)) {
+      if (readOnly || state.isUpdatingSelection || !ReactEditor.hasSelectableTarget(editor, event.target) || isEventHandled(event, attributes.onBlur)) {
         return;
       } // COMPAT: If the current `activeElement` is still the previous
       // one, this is due to the window being blurred when the tab
@@ -4248,7 +4282,7 @@ var Editable = function Editable(props) {
       IS_FOCUSED["delete"](editor);
     }, [readOnly, attributes.onBlur]),
     onClick: React.useCallback(function (event) {
-      if (hasTarget(editor, event.target) && !isEventHandled(event, attributes.onClick) && isDOMNode(event.target)) {
+      if (ReactEditor.hasTarget(editor, event.target) && !isEventHandled(event, attributes.onClick) && isDOMNode(event.target)) {
         var node = ReactEditor.toSlateNode(editor, event.target);
         var path = ReactEditor.findPath(editor, node); // At this time, the Slate document may be arbitrarily different,
         // because onClick handlers can change the document before we get here.
@@ -4301,7 +4335,7 @@ var Editable = function Editable(props) {
       }
     }, [readOnly, attributes.onClick]),
     onCompositionEnd: React.useCallback(function (event) {
-      if (hasEditableTarget(editor, event.target)) {
+      if (ReactEditor.hasSelectableTarget(editor, event.target)) {
         if (ReactEditor.isComposing(editor)) {
           setIsComposing(false);
           IS_COMPOSING.set(editor, false);
@@ -4337,7 +4371,7 @@ var Editable = function Editable(props) {
       }
     }, [attributes.onCompositionEnd]),
     onCompositionUpdate: React.useCallback(function (event) {
-      if (hasEditableTarget(editor, event.target) && !isEventHandled(event, attributes.onCompositionUpdate)) {
+      if (ReactEditor.hasSelectableTarget(editor, event.target) && !isEventHandled(event, attributes.onCompositionUpdate)) {
         if (!ReactEditor.isComposing(editor)) {
           setIsComposing(true);
           IS_COMPOSING.set(editor, true);
@@ -4345,7 +4379,7 @@ var Editable = function Editable(props) {
       }
     }, [attributes.onCompositionUpdate]),
     onCompositionStart: React.useCallback(function (event) {
-      if (hasEditableTarget(editor, event.target)) {
+      if (ReactEditor.hasSelectableTarget(editor, event.target)) {
         androidInputManager === null || androidInputManager === void 0 ? void 0 : androidInputManager.handleCompositionStart(event);
 
         if (isEventHandled(event, attributes.onCompositionStart) || IS_ANDROID) {
@@ -4384,13 +4418,13 @@ var Editable = function Editable(props) {
       }
     }, [attributes.onCompositionStart]),
     onCopy: React.useCallback(function (event) {
-      if (hasEditableTarget(editor, event.target) && !isEventHandled(event, attributes.onCopy)) {
+      if (ReactEditor.hasSelectableTarget(editor, event.target) && !isEventHandled(event, attributes.onCopy)) {
         event.preventDefault();
         ReactEditor.setFragmentData(editor, event.clipboardData, 'copy');
       }
     }, [attributes.onCopy]),
     onCut: React.useCallback(function (event) {
-      if (!readOnly && hasEditableTarget(editor, event.target) && !isEventHandled(event, attributes.onCut)) {
+      if (!readOnly && ReactEditor.hasSelectableTarget(editor, event.target) && !isEventHandled(event, attributes.onCut)) {
         event.preventDefault();
         ReactEditor.setFragmentData(editor, event.clipboardData, 'cut');
         var selection = editor.selection;
@@ -4409,7 +4443,7 @@ var Editable = function Editable(props) {
       }
     }, [readOnly, attributes.onCut]),
     onDragOver: React.useCallback(function (event) {
-      if (hasTarget(editor, event.target) && !isEventHandled(event, attributes.onDragOver)) {
+      if (ReactEditor.hasTarget(editor, event.target) && !isEventHandled(event, attributes.onDragOver)) {
         // Only when the target is void, call `preventDefault` to signal
         // that drops are allowed. Editable content is droppable by
         // default, and calling `preventDefault` hides the cursor.
@@ -4421,7 +4455,7 @@ var Editable = function Editable(props) {
       }
     }, [attributes.onDragOver]),
     onDragStart: React.useCallback(function (event) {
-      if (!readOnly && hasTarget(editor, event.target) && !isEventHandled(event, attributes.onDragStart)) {
+      if (!readOnly && ReactEditor.hasTarget(editor, event.target) && !isEventHandled(event, attributes.onDragStart)) {
         var node = ReactEditor.toSlateNode(editor, event.target);
         var path = ReactEditor.findPath(editor, node);
         var voidMatch = slate.Editor.isVoid(editor, node) || slate.Editor["void"](editor, {
@@ -4440,7 +4474,7 @@ var Editable = function Editable(props) {
       }
     }, [readOnly, attributes.onDragStart]),
     onDrop: React.useCallback(function (event) {
-      if (!readOnly && hasTarget(editor, event.target) && !isEventHandled(event, attributes.onDrop)) {
+      if (!readOnly && ReactEditor.hasTarget(editor, event.target) && !isEventHandled(event, attributes.onDrop)) {
         event.preventDefault(); // Keep a reference to the dragged range before updating selection
 
         var draggedRange = editor.selection; // Find the range where the drop happened
@@ -4471,7 +4505,7 @@ var Editable = function Editable(props) {
       state.isDraggingInternally = false;
     }, [readOnly, attributes.onDrop]),
     onDragEnd: React.useCallback(function (event) {
-      if (!readOnly && state.isDraggingInternally && attributes.onDragEnd && hasTarget(editor, event.target)) {
+      if (!readOnly && state.isDraggingInternally && attributes.onDragEnd && ReactEditor.hasTarget(editor, event.target)) {
         attributes.onDragEnd(event);
       } // When dropping on a different droppable element than the current editor,
       // `onDrop` is not called. So we need to clean up in `onDragEnd` instead.
@@ -4481,7 +4515,7 @@ var Editable = function Editable(props) {
       state.isDraggingInternally = false;
     }, [readOnly, attributes.onDragEnd]),
     onFocus: React.useCallback(function (event) {
-      if (!readOnly && !state.isUpdatingSelection && hasEditableTarget(editor, event.target) && !isEventHandled(event, attributes.onFocus)) {
+      if (!readOnly && !state.isUpdatingSelection && ReactEditor.hasSelectableTarget(editor, event.target) && !isEventHandled(event, attributes.onFocus)) {
         var el = ReactEditor.toDOMNode(editor, editor);
         var root = ReactEditor.findDocumentOrShadowRoot(editor);
         state.latestElement = root.activeElement; // COMPAT: If the editor has nested editable elements, the focus
@@ -4497,7 +4531,7 @@ var Editable = function Editable(props) {
       }
     }, [readOnly, attributes.onFocus]),
     onKeyDown: React.useCallback(function (event) {
-      if (!readOnly && hasEditableTarget(editor, event.target)) {
+      if (!readOnly && ReactEditor.hasEditableTarget(editor, event.target)) {
         androidInputManager === null || androidInputManager === void 0 ? void 0 : androidInputManager.handleKeyDown(event);
         var nativeEvent = event.nativeEvent; // COMPAT: The composition end event isn't fired reliably in all browsers,
         // so we sometimes might end up stuck in a composition state even though we
@@ -4771,7 +4805,7 @@ var Editable = function Editable(props) {
             if (selection && (Hotkeys.isDeleteBackward(nativeEvent) || Hotkeys.isDeleteForward(nativeEvent)) && slate.Range.isCollapsed(selection)) {
               var currentNode = slate.Node.parent(editor, selection.anchor.path);
 
-              if (slate.Element.isElement(currentNode) && slate.Editor.isVoid(editor, currentNode) && slate.Editor.isInline(editor, currentNode)) {
+              if (slate.Element.isElement(currentNode) && slate.Editor.isVoid(editor, currentNode) && (slate.Editor.isInline(editor, currentNode) || slate.Editor.isBlock(editor, currentNode))) {
                 event.preventDefault();
                 slate.Editor.deleteBackward(editor, {
                   unit: 'block'
@@ -4784,7 +4818,7 @@ var Editable = function Editable(props) {
       }
     }, [readOnly, attributes.onKeyDown]),
     onPaste: React.useCallback(function (event) {
-      if (!readOnly && hasEditableTarget(editor, event.target) && !isEventHandled(event, attributes.onPaste)) {
+      if (!readOnly && ReactEditor.hasSelectableTarget(editor, event.target) && !isEventHandled(event, attributes.onPaste)) {
         // COMPAT: Certain browsers don't support the `beforeinput` event, so we
         // fall back to React's `onPaste` here instead.
         // COMPAT: Firefox, Chrome and Safari don't emit `beforeinput` events
@@ -4843,34 +4877,9 @@ var defaultScrollSelectionIntoView = function defaultScrollSelectionIntoView(edi
   }
 };
 /**
- * Check if the target is in the editor.
- */
-
-
-var hasTarget = function hasTarget(editor, target) {
-  return isDOMNode(target) && ReactEditor.hasDOMNode(editor, target);
-};
-/**
- * Check if the target is editable and in the editor.
- */
-
-var hasEditableTarget = function hasEditableTarget(editor, target) {
-  return isDOMNode(target) && ReactEditor.hasDOMNode(editor, target, {
-    editable: true
-  });
-};
-/**
- * Check if the target is inside void and in an non-readonly editor.
- */
-
-var isTargetInsideNonReadonlyVoid = function isTargetInsideNonReadonlyVoid(editor, target) {
-  if (IS_READ_ONLY.get(editor)) return false;
-  var slateNode = hasTarget(editor, target) && ReactEditor.toSlateNode(editor, target);
-  return slate.Editor.isVoid(editor, slateNode);
-};
-/**
  * Check if an event is overrided by a handler.
  */
+
 
 var isEventHandled = function isEventHandled(event, handler) {
   if (!handler) {
@@ -5068,11 +5077,11 @@ var Slate = function Slate(props) {
 
   var _React$useState = React__default['default'].useState(function () {
     if (!slate.Node.isNodeList(value)) {
-      throw new Error("[Slate] value is invalid! Expected a list of elements" + "but got: ".concat(slate.Scrubber.stringify(value)));
+      throw new Error("[Slate] value is invalid! Expected a list of elements but got: ".concat(slate.Scrubber.stringify(value)));
     }
 
     if (!slate.Editor.isEditor(editor)) {
-      throw new Error("[Slate] editor is invalid! you passed:" + "".concat(slate.Scrubber.stringify(editor)));
+      throw new Error("[Slate] editor is invalid! You passed: ".concat(slate.Scrubber.stringify(editor)));
     }
 
     editor.children = value;

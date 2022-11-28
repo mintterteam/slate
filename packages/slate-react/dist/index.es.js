@@ -1,9 +1,9 @@
 import getDirection from 'direction';
 import debounce from 'lodash/debounce';
 import throttle from 'lodash/throttle';
-import React, { useLayoutEffect, useEffect, useRef, createContext, useContext, Component, useState, useCallback, useReducer, useMemo } from 'react';
+import React, { createContext, useContext, useRef, useEffect, useLayoutEffect, useState, useCallback, Component, useReducer, useMemo } from 'react';
 import scrollIntoView from 'scroll-into-view-if-needed';
-import { Editor, Scrubber, Transforms, Range, Path, Node, Text as Text$1, Element as Element$1, Point } from 'slate';
+import { Editor, Scrubber, Transforms, Range, Path, Point, Node, Text as Text$1, Element as Element$1 } from 'slate';
 import { isKeyHotkey } from 'is-hotkey';
 import ReactDOM from 'react-dom';
 
@@ -57,20 +57,52 @@ function _objectWithoutProperties(source, excluded) {
 }
 
 /**
- * An auto-incrementing identifier for keys.
- */
-var n = 0;
-/**
- * A class that keeps track of a key string. We use a full class here because we
- * want to be able to use them as keys in `WeakMap` objects.
+ * A React context for sharing the editor object.
  */
 
-class Key {
-  constructor() {
-    this.id = "".concat(n++);
+var EditorContext = /*#__PURE__*/createContext(null);
+/**
+ * Get the current editor object from the React context.
+ */
+
+var useSlateStatic = () => {
+  var editor = useContext(EditorContext);
+
+  if (!editor) {
+    throw new Error("The `useSlateStatic` hook must be used inside the <Slate> component's context.");
   }
 
-}
+  return editor;
+};
+
+var IS_REACT_VERSION_17_OR_ABOVE = parseInt(React.version.split('.')[0], 10) >= 17;
+var IS_IOS = typeof navigator !== 'undefined' && typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+var IS_APPLE = typeof navigator !== 'undefined' && /Mac OS X/.test(navigator.userAgent);
+var IS_ANDROID = typeof navigator !== 'undefined' && /Android/.test(navigator.userAgent);
+var IS_FIREFOX = typeof navigator !== 'undefined' && /^(?!.*Seamonkey)(?=.*Firefox).*/i.test(navigator.userAgent);
+var IS_SAFARI = typeof navigator !== 'undefined' && /Version\/[\d\.]+.*Safari/.test(navigator.userAgent); // "modern" Edge was released at 79.x
+
+var IS_EDGE_LEGACY = typeof navigator !== 'undefined' && /Edge?\/(?:[0-6][0-9]|[0-7][0-8])(?:\.)/i.test(navigator.userAgent);
+var IS_CHROME = typeof navigator !== 'undefined' && /Chrome/i.test(navigator.userAgent); // Native `beforeInput` events don't work well with react on Chrome 75
+// and older, Chrome 76+ can use `beforeInput` though.
+
+var IS_CHROME_LEGACY = typeof navigator !== 'undefined' && /Chrome?\/(?:[0-7][0-5]|[0-6][0-9])(?:\.)/i.test(navigator.userAgent); // Firefox did not support `beforeInput` until `v87`.
+
+var IS_FIREFOX_LEGACY = typeof navigator !== 'undefined' && /^(?!.*Seamonkey)(?=.*Firefox\/(?:[0-7][0-9]|[0-8][0-6])(?:\.)).*/i.test(navigator.userAgent); // qq browser
+
+var IS_QQBROWSER = typeof navigator !== 'undefined' && /.*QQBrowser/.test(navigator.userAgent); // UC mobile browser
+
+var IS_UC_MOBILE = typeof navigator !== 'undefined' && /.*UCBrowser/.test(navigator.userAgent); // Wechat browser
+
+var IS_WECHATBROWSER = typeof navigator !== 'undefined' && /.*Wechat/.test(navigator.userAgent); // Check if DOM is available as React does internally.
+// https://github.com/facebook/react/blob/master/packages/shared/ExecutionEnvironment.js
+
+var CAN_USE_DOM = !!(typeof window !== 'undefined' && typeof window.document !== 'undefined' && typeof window.document.createElement !== 'undefined'); // COMPAT: Firefox/Edge Legacy don't support the `beforeinput` event
+// Chrome Legacy doesn't support `beforeinput` correctly
+
+var HAS_BEFORE_INPUT_SUPPORT = !IS_CHROME_LEGACY && !IS_EDGE_LEGACY && // globalThis is undefined in older browsers
+typeof globalThis !== 'undefined' && globalThis.InputEvent && // @ts-ignore The `getTargetRanges` property isn't recognized.
+typeof globalThis.InputEvent.prototype.getTargetRanges === 'function';
 
 /**
  * Two weak maps that allow us rebuild a path given a node. They are populated
@@ -126,8 +158,25 @@ var PLACEHOLDER_SYMBOL = Symbol('placeholder');
 var MARK_PLACEHOLDER_SYMBOL = Symbol('mark-placeholder');
 
 /**
+ * An auto-incrementing identifier for keys.
+ */
+var n = 0;
+/**
+ * A class that keeps track of a key string. We use a full class here because we
+ * want to be able to use them as keys in `WeakMap` objects.
+ */
+
+class Key {
+  constructor() {
+    this.id = "".concat(n++);
+  }
+
+}
+
+/**
  * Types.
  */
+var DOMText = globalThis.Text;
 /**
  * Returns the host window of a DOM node
  */
@@ -352,35 +401,6 @@ var isTrackedMutation = (editor, mutation, batch) => {
   return isTrackedMutation(editor, parentMutation, batch);
 };
 
-var IS_REACT_VERSION_17_OR_ABOVE = parseInt(React.version.split('.')[0], 10) >= 17;
-var IS_IOS = typeof navigator !== 'undefined' && typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-var IS_APPLE = typeof navigator !== 'undefined' && /Mac OS X/.test(navigator.userAgent);
-var IS_ANDROID = typeof navigator !== 'undefined' && /Android/.test(navigator.userAgent);
-var IS_FIREFOX = typeof navigator !== 'undefined' && /^(?!.*Seamonkey)(?=.*Firefox).*/i.test(navigator.userAgent);
-var IS_SAFARI = typeof navigator !== 'undefined' && /Version\/[\d\.]+.*Safari/.test(navigator.userAgent); // "modern" Edge was released at 79.x
-
-var IS_EDGE_LEGACY = typeof navigator !== 'undefined' && /Edge?\/(?:[0-6][0-9]|[0-7][0-8])(?:\.)/i.test(navigator.userAgent);
-var IS_CHROME = typeof navigator !== 'undefined' && /Chrome/i.test(navigator.userAgent); // Native `beforeInput` events don't work well with react on Chrome 75
-// and older, Chrome 76+ can use `beforeInput` though.
-
-var IS_CHROME_LEGACY = typeof navigator !== 'undefined' && /Chrome?\/(?:[0-7][0-5]|[0-6][0-9])(?:\.)/i.test(navigator.userAgent); // Firefox did not support `beforeInput` until `v87`.
-
-var IS_FIREFOX_LEGACY = typeof navigator !== 'undefined' && /^(?!.*Seamonkey)(?=.*Firefox\/(?:[0-7][0-9]|[0-8][0-6])(?:\.)).*/i.test(navigator.userAgent); // qq browser
-
-var IS_QQBROWSER = typeof navigator !== 'undefined' && /.*QQBrowser/.test(navigator.userAgent); // UC mobile browser
-
-var IS_UC_MOBILE = typeof navigator !== 'undefined' && /.*UCBrowser/.test(navigator.userAgent); // Wechat browser
-
-var IS_WECHATBROWSER = typeof navigator !== 'undefined' && /.*Wechat/.test(navigator.userAgent); // Check if DOM is available as React does internally.
-// https://github.com/facebook/react/blob/master/packages/shared/ExecutionEnvironment.js
-
-var CAN_USE_DOM = !!(typeof window !== 'undefined' && typeof window.document !== 'undefined' && typeof window.document.createElement !== 'undefined'); // COMPAT: Firefox/Edge Legacy don't support the `beforeinput` event
-// Chrome Legacy doesn't support `beforeinput` correctly
-
-var HAS_BEFORE_INPUT_SUPPORT = !IS_CHROME_LEGACY && !IS_EDGE_LEGACY && // globalThis is undefined in older browsers
-typeof globalThis !== 'undefined' && globalThis.InputEvent && // @ts-ignore The `getTargetRanges` property isn't recognized.
-typeof globalThis.InputEvent.prototype.getTargetRanges === 'function';
-
 var ReactEditor = {
   /**
    * Check if the user is currently composing inside the editor.
@@ -507,7 +527,6 @@ var ReactEditor = {
    * Deselect the editor.
    */
   deselect(editor) {
-    ReactEditor.toDOMNode(editor, editor);
     var {
       selection
     } = editor;
@@ -642,7 +661,13 @@ var ReactEditor = {
       if (point.offset === end && nextText !== null && nextText !== void 0 && nextText.hasAttribute('data-slate-mark-placeholder')) {
         var _nextText$textContent;
 
-        domPoint = [nextText, (_nextText$textContent = nextText.textContent) !== null && _nextText$textContent !== void 0 && _nextText$textContent.startsWith('\uFEFF') ? 1 : 0];
+        var domText = nextText.childNodes[0];
+        domPoint = [// COMPAT: If we don't explicity set the dom point to be on the actual
+        // dom text element, chrome will put the selection behind the actual dom
+        // text element, causing domRange.getBoundingClientRect() calls on a collapsed
+        // selection to return incorrect zero values (https://bugs.chromium.org/p/chromium/issues/detail?id=435438)
+        // which will cause issues when scrolling to it.
+        domText instanceof DOMText ? domText : nextText, (_nextText$textContent = nextText.textContent) !== null && _nextText$textContent !== void 0 && _nextText$textContent.startsWith('\uFEFF') ? 1 : 0];
         break;
       }
 
@@ -1007,6 +1032,38 @@ var ReactEditor = {
   },
 
   /**
+   * Check if the target is in the editor.
+   */
+  hasTarget(editor, target) {
+    return isDOMNode(target) && ReactEditor.hasDOMNode(editor, target);
+  },
+
+  /**
+   * Check if the target is editable and in the editor.
+   */
+  hasEditableTarget(editor, target) {
+    return isDOMNode(target) && ReactEditor.hasDOMNode(editor, target, {
+      editable: true
+    });
+  },
+
+  /**
+   * Check if the target can be selectable
+   */
+  hasSelectableTarget(editor, target) {
+    return ReactEditor.hasEditableTarget(editor, target) || ReactEditor.isTargetInsideNonReadonlyVoid(editor, target);
+  },
+
+  /**
+   * Check if the target is inside void and in an non-readonly editor.
+   */
+  isTargetInsideNonReadonlyVoid(editor, target) {
+    if (IS_READ_ONLY.get(editor)) return false;
+    var slateNode = ReactEditor.hasTarget(editor, target) && ReactEditor.toSlateNode(editor, target);
+    return Editor.isVoid(editor, slateNode);
+  },
+
+  /**
    * Experimental and android specific: Flush all pending diffs and cancel composition at the next possible time.
    */
   androidScheduleFlush(editor) {
@@ -1022,798 +1079,6 @@ var ReactEditor = {
     return EDITOR_TO_PENDING_DIFFS.get(editor);
   }
 
-};
-
-/**
- * Prevent warning on SSR by falling back to useEffect when DOM isn't available
- */
-
-var useIsomorphicLayoutEffect = CAN_USE_DOM ? useLayoutEffect : useEffect;
-
-var _excluded$3 = ["anchor", "focus"],
-    _excluded2$1 = ["anchor", "focus"];
-var shallowCompare = (obj1, obj2) => Object.keys(obj1).length === Object.keys(obj2).length && Object.keys(obj1).every(key => obj2.hasOwnProperty(key) && obj1[key] === obj2[key]);
-/**
- * Check if a list of decorator ranges are equal to another.
- *
- * PERF: this requires the two lists to also have the ranges inside them in the
- * same order, but this is an okay constraint for us since decorations are
- * kept in order, and the odd case where they aren't is okay to re-render for.
- */
-
-var isDecoratorRangeListEqual = (list, another) => {
-  if (list.length !== another.length) {
-    return false;
-  }
-
-  for (var i = 0; i < list.length; i++) {
-    var range = list[i];
-    var other = another[i];
-
-    var rangeOwnProps = _objectWithoutProperties(range, _excluded$3);
-
-    var otherOwnProps = _objectWithoutProperties(other, _excluded2$1);
-
-    if (!Range.equals(range, other) || range[PLACEHOLDER_SYMBOL] !== other[PLACEHOLDER_SYMBOL] || !shallowCompare(rangeOwnProps, otherOwnProps)) {
-      return false;
-    }
-  }
-
-  return true;
-};
-
-/**
- * Leaf content strings.
- */
-
-var String = props => {
-  var {
-    isLast,
-    leaf,
-    parent,
-    text
-  } = props;
-  var editor = useSlateStatic();
-  var path = ReactEditor.findPath(editor, text);
-  var parentPath = Path.parent(path);
-  var isMarkPlaceholder = leaf[MARK_PLACEHOLDER_SYMBOL] === true; // COMPAT: Render text inside void nodes with a zero-width space.
-  // So the node can contain selection but the text is not visible.
-
-  if (editor.isVoid(parent)) {
-    return /*#__PURE__*/React.createElement(ZeroWidthString, {
-      length: Node.string(parent).length
-    });
-  } // COMPAT: If this is the last text node in an empty block, render a zero-
-  // width space that will convert into a line break when copying and pasting
-  // to support expected plain text.
-
-
-  if (leaf.value === '' && parent.children[parent.children.length - 1] === text && !editor.isInline(parent) && Editor.string(editor, parentPath) === '') {
-    return /*#__PURE__*/React.createElement(ZeroWidthString, {
-      isLineBreak: true,
-      isMarkPlaceholder: isMarkPlaceholder
-    });
-  } // COMPAT: If the text is empty, it's because it's on the edge of an inline
-  // node, so we render a zero-width space so that the selection can be
-  // inserted next to it still.
-
-
-  if (leaf.value === '') {
-    return /*#__PURE__*/React.createElement(ZeroWidthString, {
-      isMarkPlaceholder: isMarkPlaceholder
-    });
-  } // COMPAT: Browsers will collapse trailing new lines at the end of blocks,
-  // so we need to add an extra trailing new lines to prevent that.
-
-
-  if (isLast && leaf.value.slice(-1) === '\n') {
-    return /*#__PURE__*/React.createElement(TextString, {
-      isTrailing: true,
-      text: leaf.value
-    });
-  }
-
-  return /*#__PURE__*/React.createElement(TextString, {
-    text: leaf.value
-  });
-};
-/**
- * Leaf strings with text in them.
- */
-
-
-var TextString = props => {
-  var {
-    text,
-    isTrailing = false
-  } = props;
-  var ref = useRef(null);
-
-  var getTextContent = () => {
-    return "".concat(text !== null && text !== void 0 ? text : '').concat(isTrailing ? '\n' : '');
-  }; // This is the actual text rendering boundary where we interface with the DOM
-  // The text is not rendered as part of the virtual DOM, as since we handle basic character insertions natively,
-  // updating the DOM is not a one way dataflow anymore. What we need here is not reconciliation and diffing
-  // with previous version of the virtual DOM, but rather diffing with the actual DOM element, and replace the DOM <span> content
-  // exactly if and only if its current content does not match our current virtual DOM.
-  // Otherwise the DOM TextNode would always be replaced by React as the user types, which interferes with native text features,
-  // eg makes native spellcheck opt out from checking the text node.
-  // useLayoutEffect: updating our span before browser paint
-
-
-  useIsomorphicLayoutEffect(() => {
-    // null coalescing text to make sure we're not outputing "null" as a string in the extreme case it is nullish at runtime
-    var textWithTrailing = getTextContent();
-
-    if (ref.current && ref.current.textContent !== textWithTrailing) {
-      ref.current.textContent = textWithTrailing;
-    } // intentionally not specifying dependencies, so that this effect runs on every render
-    // as this effectively replaces "specifying the text in the virtual DOM under the <span> below" on each render
-
-  }); // Render text content immediately if it's the first-time render
-  // Ensure that text content is rendered on server-side rendering
-
-  if (!ref.current) {
-    return /*#__PURE__*/React.createElement("span", {
-      "data-slate-string": true,
-      ref: ref
-    }, getTextContent());
-  } // the span is intentionally same on every render in virtual DOM, actual rendering happens in the layout effect above
-
-
-  return /*#__PURE__*/React.createElement("span", {
-    "data-slate-string": true,
-    ref: ref
-  });
-};
-/**
- * Leaf strings without text, render as zero-width strings.
- */
-
-
-var ZeroWidthString = props => {
-  var {
-    length = 0,
-    isLineBreak = false,
-    isMarkPlaceholder = false
-  } = props;
-  var attributes = {
-    'data-slate-zero-width': isLineBreak ? 'n' : 'z',
-    'data-slate-length': length
-  };
-
-  if (isMarkPlaceholder) {
-    attributes['data-slate-mark-placeholder'] = true;
-  }
-
-  return /*#__PURE__*/React.createElement("span", Object.assign({}, attributes), !IS_ANDROID || !isLineBreak ? '\uFEFF' : null, isLineBreak ? /*#__PURE__*/React.createElement("br", null) : null);
-};
-
-/**
- * A React context for sharing the editor object.
- */
-
-var EditorContext = /*#__PURE__*/createContext(null);
-/**
- * Get the current editor object from the React context.
- */
-
-var useSlateStatic = () => {
-  var editor = useContext(EditorContext);
-
-  if (!editor) {
-    throw new Error("The `useSlateStatic` hook must be used inside the <Slate> component's context.");
-  }
-
-  return editor;
-};
-
-/**
- * Individual leaves in a text node with unique formatting.
- */
-
-var Leaf = props => {
-  var {
-    leaf,
-    isLast,
-    text,
-    parent,
-    renderPlaceholder,
-    renderLeaf = props => /*#__PURE__*/React.createElement(DefaultLeaf, Object.assign({}, props))
-  } = props;
-  var placeholderRef = useRef(null);
-  var editor = useSlateStatic();
-  useEffect(() => {
-    var placeholderEl = placeholderRef === null || placeholderRef === void 0 ? void 0 : placeholderRef.current;
-    var editorEl = document.querySelector('[data-slate-editor="true"]');
-
-    if (!placeholderEl || !editorEl) {
-      return;
-    }
-
-    editorEl.style.minHeight = "".concat(placeholderEl.clientHeight, "px");
-    EDITOR_TO_PLACEHOLDER_ELEMENT.set(editor, placeholderEl);
-    return () => {
-      editorEl.style.minHeight = 'auto';
-      EDITOR_TO_PLACEHOLDER_ELEMENT.delete(editor);
-    };
-  }, [placeholderRef, leaf]);
-  var children = /*#__PURE__*/React.createElement(String, {
-    isLast: isLast,
-    leaf: leaf,
-    parent: parent,
-    text: text
-  });
-
-  if (leaf[PLACEHOLDER_SYMBOL]) {
-    var placeholderProps = {
-      children: leaf.placeholder,
-      attributes: {
-        'data-slate-placeholder': true,
-        style: {
-          position: 'absolute',
-          pointerEvents: 'none',
-          width: '100%',
-          maxWidth: '100%',
-          display: 'block',
-          opacity: '0.333',
-          userSelect: 'none',
-          textDecoration: 'none'
-        },
-        contentEditable: false,
-        ref: placeholderRef
-      }
-    };
-    children = /*#__PURE__*/React.createElement(React.Fragment, null, renderPlaceholder(placeholderProps), children);
-  } // COMPAT: Having the `data-` attributes on these leaf elements ensures that
-  // in certain misbehaving browsers they aren't weirdly cloned/destroyed by
-  // contenteditable behaviors. (2019/05/08)
-
-
-  var attributes = {
-    'data-slate-leaf': true
-  };
-  return renderLeaf({
-    attributes,
-    children,
-    leaf,
-    text
-  });
-};
-
-var MemoizedLeaf = /*#__PURE__*/React.memo(Leaf, (prev, next) => {
-  return next.parent === prev.parent && next.isLast === prev.isLast && next.renderLeaf === prev.renderLeaf && next.renderPlaceholder === prev.renderPlaceholder && next.text === prev.text && Text$1.equals(next.leaf, prev.leaf) && next.leaf[PLACEHOLDER_SYMBOL] === prev.leaf[PLACEHOLDER_SYMBOL];
-});
-var DefaultLeaf = props => {
-  var {
-    attributes,
-    children
-  } = props;
-  return /*#__PURE__*/React.createElement("span", Object.assign({}, attributes), children);
-};
-
-/**
- * Text.
- */
-
-var Text = props => {
-  var {
-    decorations,
-    isLast,
-    parent,
-    renderPlaceholder,
-    renderLeaf,
-    text
-  } = props;
-  var editor = useSlateStatic();
-  var ref = useRef(null);
-  var leaves = Text$1.decorations(text, decorations);
-  var key = ReactEditor.findKey(editor, text);
-  var children = [];
-
-  for (var i = 0; i < leaves.length; i++) {
-    var leaf = leaves[i];
-    children.push( /*#__PURE__*/React.createElement(MemoizedLeaf, {
-      isLast: isLast && i === leaves.length - 1,
-      key: "".concat(key.id, "-").concat(i),
-      renderPlaceholder: renderPlaceholder,
-      leaf: leaf,
-      text: text,
-      parent: parent,
-      renderLeaf: renderLeaf
-    }));
-  } // Update element-related weak maps with the DOM element ref.
-
-
-  useIsomorphicLayoutEffect(() => {
-    var KEY_TO_ELEMENT = EDITOR_TO_KEY_TO_ELEMENT.get(editor);
-
-    if (ref.current) {
-      KEY_TO_ELEMENT === null || KEY_TO_ELEMENT === void 0 ? void 0 : KEY_TO_ELEMENT.set(key, ref.current);
-      NODE_TO_ELEMENT.set(text, ref.current);
-      ELEMENT_TO_NODE.set(ref.current, text);
-    } else {
-      KEY_TO_ELEMENT === null || KEY_TO_ELEMENT === void 0 ? void 0 : KEY_TO_ELEMENT.delete(key);
-      NODE_TO_ELEMENT.delete(text);
-    }
-  });
-  return /*#__PURE__*/React.createElement("span", {
-    "data-slate-node": "text",
-    ref: ref
-  }, children);
-};
-
-var MemoizedText = /*#__PURE__*/React.memo(Text, (prev, next) => {
-  return next.parent === prev.parent && next.isLast === prev.isLast && next.renderLeaf === prev.renderLeaf && next.text === prev.text && isDecoratorRangeListEqual(next.decorations, prev.decorations);
-});
-
-/**
- * Element.
- */
-
-var Element = props => {
-  var {
-    decorations,
-    element,
-    renderElement = p => /*#__PURE__*/React.createElement(DefaultElement, Object.assign({}, p)),
-    renderPlaceholder,
-    renderLeaf,
-    selection
-  } = props;
-  var ref = useRef(null);
-  var editor = useSlateStatic();
-  var readOnly = useReadOnly();
-  var isInline = editor.isInline(element);
-  var key = ReactEditor.findKey(editor, element);
-  var children = useChildren({
-    decorations,
-    node: element,
-    renderElement,
-    renderPlaceholder,
-    renderLeaf,
-    selection
-  }); // Attributes that the developer must mix into the element in their
-  // custom node renderer component.
-
-  var attributes = {
-    'data-slate-node': 'element',
-    ref
-  };
-
-  if (isInline) {
-    attributes['data-slate-inline'] = true;
-  } // If it's a block node with inline children, add the proper `dir` attribute
-  // for text direction.
-
-
-  if (!isInline && Editor.hasInlines(editor, element)) {
-    var text = Node.string(element);
-    var dir = getDirection(text);
-
-    if (dir === 'rtl') {
-      attributes.dir = dir;
-    }
-  } // If it's a void node, wrap the children in extra void-specific elements.
-
-
-  if (Editor.isVoid(editor, element)) {
-    attributes['data-slate-void'] = true;
-
-    if (!readOnly && isInline) {
-      attributes.contentEditable = false;
-    }
-
-    var Tag = isInline ? 'span' : 'div';
-    var [[_text]] = Node.texts(element);
-    children = /*#__PURE__*/React.createElement(Tag, {
-      "data-slate-spacer": true,
-      style: {
-        height: '0',
-        color: 'transparent',
-        outline: 'none',
-        position: 'absolute'
-      }
-    }, /*#__PURE__*/React.createElement(MemoizedText, {
-      renderPlaceholder: renderPlaceholder,
-      decorations: [],
-      isLast: false,
-      parent: element,
-      text: _text
-    }));
-    NODE_TO_INDEX.set(_text, 0);
-    NODE_TO_PARENT.set(_text, element);
-  } // Update element-related weak maps with the DOM element ref.
-
-
-  useIsomorphicLayoutEffect(() => {
-    var KEY_TO_ELEMENT = EDITOR_TO_KEY_TO_ELEMENT.get(editor);
-
-    if (ref.current) {
-      KEY_TO_ELEMENT === null || KEY_TO_ELEMENT === void 0 ? void 0 : KEY_TO_ELEMENT.set(key, ref.current);
-      NODE_TO_ELEMENT.set(element, ref.current);
-      ELEMENT_TO_NODE.set(ref.current, element);
-    } else {
-      KEY_TO_ELEMENT === null || KEY_TO_ELEMENT === void 0 ? void 0 : KEY_TO_ELEMENT.delete(key);
-      NODE_TO_ELEMENT.delete(element);
-    }
-  });
-  return renderElement({
-    attributes,
-    children,
-    element
-  });
-};
-
-var MemoizedElement = /*#__PURE__*/React.memo(Element, (prev, next) => {
-  return prev.element === next.element && prev.renderElement === next.renderElement && prev.renderLeaf === next.renderLeaf && isDecoratorRangeListEqual(prev.decorations, next.decorations) && (prev.selection === next.selection || !!prev.selection && !!next.selection && Range.equals(prev.selection, next.selection));
-});
-/**
- * The default element renderer.
- */
-
-var DefaultElement = props => {
-  var {
-    attributes,
-    children,
-    element
-  } = props;
-  var editor = useSlateStatic();
-  var Tag = editor.isInline(element) ? 'span' : 'div';
-  return /*#__PURE__*/React.createElement(Tag, Object.assign({}, attributes, {
-    style: {
-      position: 'relative'
-    }
-  }), children);
-};
-
-/**
- * A React context for sharing the `decorate` prop of the editable.
- */
-
-var DecorateContext = /*#__PURE__*/createContext(() => []);
-/**
- * Get the current `decorate` prop of the editable.
- */
-
-var useDecorate = () => {
-  return useContext(DecorateContext);
-};
-
-/**
- * A React context for sharing the `selected` state of an element.
- */
-
-var SelectedContext = /*#__PURE__*/createContext(false);
-/**
- * Get the current `selected` state of an element.
- */
-
-var useSelected = () => {
-  return useContext(SelectedContext);
-};
-
-/**
- * Children.
- */
-
-var useChildren = props => {
-  var {
-    decorations,
-    node,
-    renderElement,
-    renderPlaceholder,
-    renderLeaf,
-    selection
-  } = props;
-  var decorate = useDecorate();
-  var editor = useSlateStatic();
-  var path = ReactEditor.findPath(editor, node);
-  var children = [];
-  var isLeafBlock = Element$1.isElement(node) && !editor.isInline(node) && Editor.hasInlines(editor, node);
-
-  for (var i = 0; i < node.children.length; i++) {
-    var p = path.concat(i);
-    var n = node.children[i];
-    var key = ReactEditor.findKey(editor, n);
-    var range = Editor.range(editor, p);
-    var sel = selection && Range.intersection(range, selection);
-    var ds = decorate([n, p]);
-
-    for (var dec of decorations) {
-      var d = Range.intersection(dec, range);
-
-      if (d) {
-        ds.push(d);
-      }
-    }
-
-    if (Element$1.isElement(n)) {
-      children.push( /*#__PURE__*/React.createElement(SelectedContext.Provider, {
-        key: "provider-".concat(key.id),
-        value: !!sel
-      }, /*#__PURE__*/React.createElement(MemoizedElement, {
-        decorations: ds,
-        element: n,
-        key: key.id,
-        renderElement: renderElement,
-        renderPlaceholder: renderPlaceholder,
-        renderLeaf: renderLeaf,
-        selection: sel
-      })));
-    } else {
-      children.push( /*#__PURE__*/React.createElement(MemoizedText, {
-        decorations: ds,
-        key: key.id,
-        isLast: isLeafBlock && i === node.children.length - 1,
-        parent: node,
-        renderPlaceholder: renderPlaceholder,
-        renderLeaf: renderLeaf,
-        text: n
-      }));
-    }
-
-    NODE_TO_INDEX.set(n, i);
-    NODE_TO_PARENT.set(n, node);
-  }
-
-  return children;
-};
-
-/**
- * A React context for sharing the `readOnly` state of the editor.
- */
-
-var ReadOnlyContext = /*#__PURE__*/createContext(false);
-/**
- * Get the current `readOnly` state of the editor.
- */
-
-var useReadOnly = () => {
-  return useContext(ReadOnlyContext);
-};
-
-var SlateContext = /*#__PURE__*/createContext(null);
-/**
- * Get the current editor object from the React context.
- */
-
-var useSlate = () => {
-  var context = useContext(SlateContext);
-
-  if (!context) {
-    throw new Error("The `useSlate` hook must be used inside the <Slate> component's context.");
-  }
-
-  var {
-    editor
-  } = context;
-  return editor;
-};
-var useSlateWithV = () => {
-  var context = useContext(SlateContext);
-
-  if (!context) {
-    throw new Error("The `useSlate` hook must be used inside the <Slate> component's context.");
-  }
-
-  return context;
-};
-
-var TRIPLE_CLICK = 3;
-
-/**
- * Hotkey mappings for each platform.
- */
-
-var HOTKEYS = {
-  bold: 'mod+b',
-  compose: ['down', 'left', 'right', 'up', 'backspace', 'enter'],
-  moveBackward: 'left',
-  moveForward: 'right',
-  moveWordBackward: 'ctrl+left',
-  moveWordForward: 'ctrl+right',
-  deleteBackward: 'shift?+backspace',
-  deleteForward: 'shift?+delete',
-  extendBackward: 'shift+left',
-  extendForward: 'shift+right',
-  italic: 'mod+i',
-  insertSoftBreak: 'shift+enter',
-  splitBlock: 'enter',
-  undo: 'mod+z'
-};
-var APPLE_HOTKEYS = {
-  moveLineBackward: 'opt+up',
-  moveLineForward: 'opt+down',
-  moveWordBackward: 'opt+left',
-  moveWordForward: 'opt+right',
-  deleteBackward: ['ctrl+backspace', 'ctrl+h'],
-  deleteForward: ['ctrl+delete', 'ctrl+d'],
-  deleteLineBackward: 'cmd+shift?+backspace',
-  deleteLineForward: ['cmd+shift?+delete', 'ctrl+k'],
-  deleteWordBackward: 'opt+shift?+backspace',
-  deleteWordForward: 'opt+shift?+delete',
-  extendLineBackward: 'opt+shift+up',
-  extendLineForward: 'opt+shift+down',
-  redo: 'cmd+shift+z',
-  transposeCharacter: 'ctrl+t'
-};
-var WINDOWS_HOTKEYS = {
-  deleteWordBackward: 'ctrl+shift?+backspace',
-  deleteWordForward: 'ctrl+shift?+delete',
-  redo: ['ctrl+y', 'ctrl+shift+z']
-};
-/**
- * Create a platform-aware hotkey checker.
- */
-
-var create = key => {
-  var generic = HOTKEYS[key];
-  var apple = APPLE_HOTKEYS[key];
-  var windows = WINDOWS_HOTKEYS[key];
-  var isGeneric = generic && isKeyHotkey(generic);
-  var isApple = apple && isKeyHotkey(apple);
-  var isWindows = windows && isKeyHotkey(windows);
-  return event => {
-    if (isGeneric && isGeneric(event)) return true;
-    if (IS_APPLE && isApple && isApple(event)) return true;
-    if (!IS_APPLE && isWindows && isWindows(event)) return true;
-    return false;
-  };
-};
-/**
- * Hotkeys.
- */
-
-
-var Hotkeys = {
-  isBold: create('bold'),
-  isCompose: create('compose'),
-  isMoveBackward: create('moveBackward'),
-  isMoveForward: create('moveForward'),
-  isDeleteBackward: create('deleteBackward'),
-  isDeleteForward: create('deleteForward'),
-  isDeleteLineBackward: create('deleteLineBackward'),
-  isDeleteLineForward: create('deleteLineForward'),
-  isDeleteWordBackward: create('deleteWordBackward'),
-  isDeleteWordForward: create('deleteWordForward'),
-  isExtendBackward: create('extendBackward'),
-  isExtendForward: create('extendForward'),
-  isExtendLineBackward: create('extendLineBackward'),
-  isExtendLineForward: create('extendLineForward'),
-  isItalic: create('italic'),
-  isMoveLineBackward: create('moveLineBackward'),
-  isMoveLineForward: create('moveLineForward'),
-  isMoveWordBackward: create('moveWordBackward'),
-  isMoveWordForward: create('moveWordForward'),
-  isRedo: create('redo'),
-  isSoftBreak: create('insertSoftBreak'),
-  isSplitBlock: create('splitBlock'),
-  isTransposeCharacter: create('transposeCharacter'),
-  isUndo: create('undo')
-};
-
-var createRestoreDomManager = (editor, receivedUserInput) => {
-  var bufferedMutations = [];
-
-  var clear = () => {
-    bufferedMutations = [];
-  };
-
-  var registerMutations = mutations => {
-    if (!receivedUserInput.current) {
-      return;
-    }
-
-    var trackedMutations = mutations.filter(mutation => isTrackedMutation(editor, mutation, mutations));
-    bufferedMutations.push(...trackedMutations);
-  };
-
-  function restoreDOM() {
-    bufferedMutations.reverse().forEach(mutation => {
-      if (mutation.type === 'characterData') {
-        mutation.target.textContent = mutation.oldValue;
-        return;
-      }
-
-      mutation.removedNodes.forEach(node => {
-        mutation.target.insertBefore(node, mutation.nextSibling);
-      });
-      mutation.addedNodes.forEach(node => {
-        mutation.target.removeChild(node);
-      });
-    }); // Clear buffered mutations to ensure we don't undo them twice
-
-    clear();
-  }
-
-  return {
-    registerMutations,
-    restoreDOM,
-    clear
-  };
-};
-
-var MUTATION_OBSERVER_CONFIG$1 = {
-  subtree: true,
-  childList: true,
-  characterData: true,
-  characterDataOldValue: true
-}; // We have to use a class component here since we rely on `getSnapshotBeforeUpdate` which has no FC equivalent
-// to run code synchronously immediately before react commits the component update to the DOM.
-
-class RestoreDOMComponent extends Component {
-  constructor() {
-    super(...arguments);
-    this.context = null;
-    this.manager = null;
-    this.mutationObserver = null;
-  }
-
-  observe() {
-    var _this$mutationObserve;
-
-    var {
-      node
-    } = this.props;
-
-    if (!node.current) {
-      throw new Error('Failed to attach MutationObserver, `node` is undefined');
-    }
-
-    (_this$mutationObserve = this.mutationObserver) === null || _this$mutationObserve === void 0 ? void 0 : _this$mutationObserve.observe(node.current, MUTATION_OBSERVER_CONFIG$1);
-  }
-
-  componentDidMount() {
-    var {
-      receivedUserInput
-    } = this.props;
-    var editor = this.context;
-    this.manager = createRestoreDomManager(editor, receivedUserInput);
-    this.mutationObserver = new MutationObserver(this.manager.registerMutations);
-    this.observe();
-  }
-
-  getSnapshotBeforeUpdate() {
-    var _this$mutationObserve2, _this$mutationObserve3, _this$manager2;
-
-    var pendingMutations = (_this$mutationObserve2 = this.mutationObserver) === null || _this$mutationObserve2 === void 0 ? void 0 : _this$mutationObserve2.takeRecords();
-
-    if (pendingMutations !== null && pendingMutations !== void 0 && pendingMutations.length) {
-      var _this$manager;
-
-      (_this$manager = this.manager) === null || _this$manager === void 0 ? void 0 : _this$manager.registerMutations(pendingMutations);
-    }
-
-    (_this$mutationObserve3 = this.mutationObserver) === null || _this$mutationObserve3 === void 0 ? void 0 : _this$mutationObserve3.disconnect();
-    (_this$manager2 = this.manager) === null || _this$manager2 === void 0 ? void 0 : _this$manager2.restoreDOM();
-    return null;
-  }
-
-  componentDidUpdate() {
-    var _this$manager3;
-
-    (_this$manager3 = this.manager) === null || _this$manager3 === void 0 ? void 0 : _this$manager3.clear();
-    this.observe();
-  }
-
-  componentWillUnmount() {
-    var _this$mutationObserve4;
-
-    (_this$mutationObserve4 = this.mutationObserver) === null || _this$mutationObserve4 === void 0 ? void 0 : _this$mutationObserve4.disconnect();
-  }
-
-  render() {
-    return this.props.children;
-  }
-
-}
-
-RestoreDOMComponent.contextType = EditorContext;
-var RestoreDOM = IS_ANDROID ? RestoreDOMComponent : _ref => {
-  var {
-    children
-  } = _ref;
-  return /*#__PURE__*/React.createElement(React.Fragment, null, children);
 };
 
 /**
@@ -2939,6 +2204,12 @@ function useIsMounted() {
   return isMountedRef.current;
 }
 
+/**
+ * Prevent warning on SSR by falling back to useEffect when DOM isn't available
+ */
+
+var useIsomorphicLayoutEffect = CAN_USE_DOM ? useLayoutEffect : useEffect;
+
 function useMutationObserver(node, callback, options) {
   var [mutationObserver] = useState(() => new MutationObserver(callback));
   useIsomorphicLayoutEffect(() => {
@@ -2956,12 +2227,12 @@ function useMutationObserver(node, callback, options) {
   }, []);
 }
 
-var _excluded$2 = ["node"];
+var _excluded$3 = ["node"];
 
 function ownKeys$2(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) { symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); } keys.push.apply(keys, symbols); } return keys; }
 
 function _objectSpread$2(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys$2(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys$2(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
-var MUTATION_OBSERVER_CONFIG = {
+var MUTATION_OBSERVER_CONFIG$1 = {
   subtree: true,
   childList: true,
   characterData: true
@@ -2970,7 +2241,7 @@ function useAndroidInputManager(_ref) {
   var {
     node
   } = _ref,
-      options = _objectWithoutProperties(_ref, _excluded$2);
+      options = _objectWithoutProperties(_ref, _excluded$3);
 
   if (!IS_ANDROID) {
     return null;
@@ -2981,7 +2252,7 @@ function useAndroidInputManager(_ref) {
   var [inputManager] = useState(() => createAndroidInputManager(_objectSpread$2({
     editor
   }, options)));
-  useMutationObserver(node, inputManager.handleDomMutations, MUTATION_OBSERVER_CONFIG);
+  useMutationObserver(node, inputManager.handleDomMutations, MUTATION_OBSERVER_CONFIG$1);
   EDITOR_TO_SCHEDULE_FLUSH.set(editor, inputManager.scheduleFlush);
 
   if (isMounted) {
@@ -2990,6 +2261,555 @@ function useAndroidInputManager(_ref) {
 
   return inputManager;
 }
+
+var _excluded$2 = ["anchor", "focus"],
+    _excluded2$1 = ["anchor", "focus"];
+var shallowCompare = (obj1, obj2) => Object.keys(obj1).length === Object.keys(obj2).length && Object.keys(obj1).every(key => obj2.hasOwnProperty(key) && obj1[key] === obj2[key]);
+/**
+ * Check if a list of decorator ranges are equal to another.
+ *
+ * PERF: this requires the two lists to also have the ranges inside them in the
+ * same order, but this is an okay constraint for us since decorations are
+ * kept in order, and the odd case where they aren't is okay to re-render for.
+ */
+
+var isDecoratorRangeListEqual = (list, another) => {
+  if (list.length !== another.length) {
+    return false;
+  }
+
+  for (var i = 0; i < list.length; i++) {
+    var range = list[i];
+    var other = another[i];
+
+    var rangeOwnProps = _objectWithoutProperties(range, _excluded$2);
+
+    var otherOwnProps = _objectWithoutProperties(other, _excluded2$1);
+
+    if (!Range.equals(range, other) || range[PLACEHOLDER_SYMBOL] !== other[PLACEHOLDER_SYMBOL] || !shallowCompare(rangeOwnProps, otherOwnProps)) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
+/**
+ * Leaf content strings.
+ */
+
+var String = props => {
+  var {
+    isLast,
+    leaf,
+    parent,
+    text
+  } = props;
+  var editor = useSlateStatic();
+  var path = ReactEditor.findPath(editor, text);
+  var parentPath = Path.parent(path);
+  var isMarkPlaceholder = leaf[MARK_PLACEHOLDER_SYMBOL] === true; // COMPAT: Render text inside void nodes with a zero-width space.
+  // So the node can contain selection but the text is not visible.
+
+  if (editor.isVoid(parent)) {
+    return /*#__PURE__*/React.createElement(ZeroWidthString, {
+      length: Node.string(parent).length
+    });
+  } // COMPAT: If this is the last text node in an empty block, render a zero-
+  // width space that will convert into a line break when copying and pasting
+  // to support expected plain text.
+
+
+  if (leaf.value === '' && parent.children[parent.children.length - 1] === text && !editor.isInline(parent) && Editor.string(editor, parentPath) === '') {
+    return /*#__PURE__*/React.createElement(ZeroWidthString, {
+      isLineBreak: true,
+      isMarkPlaceholder: isMarkPlaceholder
+    });
+  } // COMPAT: If the text is empty, it's because it's on the edge of an inline
+  // node, so we render a zero-width space so that the selection can be
+  // inserted next to it still.
+
+
+  if (leaf.value === '') {
+    return /*#__PURE__*/React.createElement(ZeroWidthString, {
+      isMarkPlaceholder: isMarkPlaceholder
+    });
+  } // COMPAT: Browsers will collapse trailing new lines at the end of blocks,
+  // so we need to add an extra trailing new lines to prevent that.
+
+
+  if (isLast && leaf.value.slice(-1) === '\n') {
+    return /*#__PURE__*/React.createElement(TextString, {
+      isTrailing: true,
+      text: leaf.value
+    });
+  }
+
+  return /*#__PURE__*/React.createElement(TextString, {
+    text: leaf.value
+  });
+};
+/**
+ * Leaf strings with text in them.
+ */
+
+
+var TextString = props => {
+  var {
+    text,
+    isTrailing = false
+  } = props;
+  var ref = useRef(null);
+
+  var getTextContent = () => {
+    return "".concat(text !== null && text !== void 0 ? text : '').concat(isTrailing ? '\n' : '');
+  }; // This is the actual text rendering boundary where we interface with the DOM
+  // The text is not rendered as part of the virtual DOM, as since we handle basic character insertions natively,
+  // updating the DOM is not a one way dataflow anymore. What we need here is not reconciliation and diffing
+  // with previous version of the virtual DOM, but rather diffing with the actual DOM element, and replace the DOM <span> content
+  // exactly if and only if its current content does not match our current virtual DOM.
+  // Otherwise the DOM TextNode would always be replaced by React as the user types, which interferes with native text features,
+  // eg makes native spellcheck opt out from checking the text node.
+  // useLayoutEffect: updating our span before browser paint
+
+
+  useIsomorphicLayoutEffect(() => {
+    // null coalescing text to make sure we're not outputing "null" as a string in the extreme case it is nullish at runtime
+    var textWithTrailing = getTextContent();
+
+    if (ref.current && ref.current.textContent !== textWithTrailing) {
+      ref.current.textContent = textWithTrailing;
+    } // intentionally not specifying dependencies, so that this effect runs on every render
+    // as this effectively replaces "specifying the text in the virtual DOM under the <span> below" on each render
+
+  }); // Render text content immediately if it's the first-time render
+  // Ensure that text content is rendered on server-side rendering
+
+  if (!ref.current) {
+    return /*#__PURE__*/React.createElement("span", {
+      "data-slate-string": true,
+      ref: ref
+    }, getTextContent());
+  } // the span is intentionally same on every render in virtual DOM, actual rendering happens in the layout effect above
+
+
+  return /*#__PURE__*/React.createElement("span", {
+    "data-slate-string": true,
+    ref: ref
+  });
+};
+/**
+ * Leaf strings without text, render as zero-width strings.
+ */
+
+
+var ZeroWidthString = props => {
+  var {
+    length = 0,
+    isLineBreak = false,
+    isMarkPlaceholder = false
+  } = props;
+  var attributes = {
+    'data-slate-zero-width': isLineBreak ? 'n' : 'z',
+    'data-slate-length': length
+  };
+
+  if (isMarkPlaceholder) {
+    attributes['data-slate-mark-placeholder'] = true;
+  }
+
+  return /*#__PURE__*/React.createElement("span", Object.assign({}, attributes), !IS_ANDROID || !isLineBreak ? '\uFEFF' : null, isLineBreak ? /*#__PURE__*/React.createElement("br", null) : null);
+};
+
+/**
+ * Individual leaves in a text node with unique formatting.
+ */
+
+var Leaf = props => {
+  var {
+    leaf,
+    isLast,
+    text,
+    parent,
+    renderPlaceholder,
+    renderLeaf = props => /*#__PURE__*/React.createElement(DefaultLeaf, Object.assign({}, props))
+  } = props;
+  var placeholderRef = useRef(null);
+  var editor = useSlateStatic();
+  useEffect(() => {
+    var placeholderEl = placeholderRef === null || placeholderRef === void 0 ? void 0 : placeholderRef.current;
+    var editorEl = ReactEditor.toDOMNode(editor, editor);
+
+    if (!placeholderEl || !editorEl) {
+      return;
+    }
+
+    editorEl.style.minHeight = "".concat(placeholderEl.clientHeight, "px");
+    EDITOR_TO_PLACEHOLDER_ELEMENT.set(editor, placeholderEl);
+    return () => {
+      editorEl.style.minHeight = 'auto';
+      EDITOR_TO_PLACEHOLDER_ELEMENT.delete(editor);
+    };
+  }, [placeholderRef, leaf]);
+  var children = /*#__PURE__*/React.createElement(String, {
+    isLast: isLast,
+    leaf: leaf,
+    parent: parent,
+    text: text
+  });
+
+  if (leaf[PLACEHOLDER_SYMBOL]) {
+    var placeholderProps = {
+      children: leaf.placeholder,
+      attributes: {
+        'data-slate-placeholder': true,
+        style: {
+          position: 'absolute',
+          pointerEvents: 'none',
+          width: '100%',
+          maxWidth: '100%',
+          display: 'block',
+          opacity: '0.333',
+          userSelect: 'none',
+          textDecoration: 'none'
+        },
+        contentEditable: false,
+        ref: placeholderRef
+      }
+    };
+    children = /*#__PURE__*/React.createElement(React.Fragment, null, renderPlaceholder(placeholderProps), children);
+  } // COMPAT: Having the `data-` attributes on these leaf elements ensures that
+  // in certain misbehaving browsers they aren't weirdly cloned/destroyed by
+  // contenteditable behaviors. (2019/05/08)
+
+
+  var attributes = {
+    'data-slate-leaf': true
+  };
+  return renderLeaf({
+    attributes,
+    children,
+    leaf,
+    text
+  });
+};
+
+var MemoizedLeaf = /*#__PURE__*/React.memo(Leaf, (prev, next) => {
+  return next.parent === prev.parent && next.isLast === prev.isLast && next.renderLeaf === prev.renderLeaf && next.renderPlaceholder === prev.renderPlaceholder && next.text === prev.text && Text$1.equals(next.leaf, prev.leaf) && next.leaf[PLACEHOLDER_SYMBOL] === prev.leaf[PLACEHOLDER_SYMBOL];
+});
+var DefaultLeaf = props => {
+  var {
+    attributes,
+    children
+  } = props;
+  return /*#__PURE__*/React.createElement("span", Object.assign({}, attributes), children);
+};
+
+/**
+ * Text.
+ */
+
+var Text = props => {
+  var {
+    decorations,
+    isLast,
+    parent,
+    renderPlaceholder,
+    renderLeaf,
+    text
+  } = props;
+  var editor = useSlateStatic();
+  var ref = useRef(null);
+  var leaves = Text$1.decorations(text, decorations);
+  var key = ReactEditor.findKey(editor, text);
+  var children = [];
+
+  for (var i = 0; i < leaves.length; i++) {
+    var leaf = leaves[i];
+    children.push( /*#__PURE__*/React.createElement(MemoizedLeaf, {
+      isLast: isLast && i === leaves.length - 1,
+      key: "".concat(key.id, "-").concat(i),
+      renderPlaceholder: renderPlaceholder,
+      leaf: leaf,
+      text: text,
+      parent: parent,
+      renderLeaf: renderLeaf
+    }));
+  } // Update element-related weak maps with the DOM element ref.
+
+
+  useIsomorphicLayoutEffect(() => {
+    var KEY_TO_ELEMENT = EDITOR_TO_KEY_TO_ELEMENT.get(editor);
+
+    if (ref.current) {
+      KEY_TO_ELEMENT === null || KEY_TO_ELEMENT === void 0 ? void 0 : KEY_TO_ELEMENT.set(key, ref.current);
+      NODE_TO_ELEMENT.set(text, ref.current);
+      ELEMENT_TO_NODE.set(ref.current, text);
+    } else {
+      KEY_TO_ELEMENT === null || KEY_TO_ELEMENT === void 0 ? void 0 : KEY_TO_ELEMENT.delete(key);
+      NODE_TO_ELEMENT.delete(text);
+    }
+  });
+  return /*#__PURE__*/React.createElement("span", {
+    "data-slate-node": "text",
+    ref: ref
+  }, children);
+};
+
+var MemoizedText = /*#__PURE__*/React.memo(Text, (prev, next) => {
+  return next.parent === prev.parent && next.isLast === prev.isLast && next.renderLeaf === prev.renderLeaf && next.text === prev.text && isDecoratorRangeListEqual(next.decorations, prev.decorations);
+});
+
+/**
+ * Element.
+ */
+
+var Element = props => {
+  var {
+    decorations,
+    element,
+    renderElement = p => /*#__PURE__*/React.createElement(DefaultElement, Object.assign({}, p)),
+    renderPlaceholder,
+    renderLeaf,
+    selection
+  } = props;
+  var editor = useSlateStatic();
+  var readOnly = useReadOnly();
+  var isInline = editor.isInline(element);
+  var key = ReactEditor.findKey(editor, element);
+  var ref = useCallback(ref => {
+    // Update element-related weak maps with the DOM element ref.
+    var KEY_TO_ELEMENT = EDITOR_TO_KEY_TO_ELEMENT.get(editor);
+
+    if (ref) {
+      KEY_TO_ELEMENT === null || KEY_TO_ELEMENT === void 0 ? void 0 : KEY_TO_ELEMENT.set(key, ref);
+      NODE_TO_ELEMENT.set(element, ref);
+      ELEMENT_TO_NODE.set(ref, element);
+    } else {
+      KEY_TO_ELEMENT === null || KEY_TO_ELEMENT === void 0 ? void 0 : KEY_TO_ELEMENT.delete(key);
+      NODE_TO_ELEMENT.delete(element);
+    }
+  }, [editor, key, element]);
+  var children = useChildren({
+    decorations,
+    node: element,
+    renderElement,
+    renderPlaceholder,
+    renderLeaf,
+    selection
+  }); // Attributes that the developer must mix into the element in their
+  // custom node renderer component.
+
+  var attributes = {
+    'data-slate-node': 'element',
+    ref
+  };
+
+  if (isInline) {
+    attributes['data-slate-inline'] = true;
+  } // If it's a block node with inline children, add the proper `dir` attribute
+  // for text direction.
+
+
+  if (!isInline && Editor.hasInlines(editor, element)) {
+    var text = Node.string(element);
+    var dir = getDirection(text);
+
+    if (dir === 'rtl') {
+      attributes.dir = dir;
+    }
+  } // If it's a void node, wrap the children in extra void-specific elements.
+
+
+  if (Editor.isVoid(editor, element)) {
+    attributes['data-slate-void'] = true;
+
+    if (!readOnly && isInline) {
+      attributes.contentEditable = false;
+    }
+
+    var Tag = isInline ? 'span' : 'div';
+    var [[_text]] = Node.texts(element);
+    children = /*#__PURE__*/React.createElement(Tag, {
+      "data-slate-spacer": true,
+      style: {
+        height: '0',
+        color: 'transparent',
+        outline: 'none',
+        position: 'absolute'
+      }
+    }, /*#__PURE__*/React.createElement(MemoizedText, {
+      renderPlaceholder: renderPlaceholder,
+      decorations: [],
+      isLast: false,
+      parent: element,
+      text: _text
+    }));
+    NODE_TO_INDEX.set(_text, 0);
+    NODE_TO_PARENT.set(_text, element);
+  }
+
+  return renderElement({
+    attributes,
+    children,
+    element
+  });
+};
+
+var MemoizedElement = /*#__PURE__*/React.memo(Element, (prev, next) => {
+  return prev.element === next.element && prev.renderElement === next.renderElement && prev.renderLeaf === next.renderLeaf && isDecoratorRangeListEqual(prev.decorations, next.decorations) && (prev.selection === next.selection || !!prev.selection && !!next.selection && Range.equals(prev.selection, next.selection));
+});
+/**
+ * The default element renderer.
+ */
+
+var DefaultElement = props => {
+  var {
+    attributes,
+    children,
+    element
+  } = props;
+  var editor = useSlateStatic();
+  var Tag = editor.isInline(element) ? 'span' : 'div';
+  return /*#__PURE__*/React.createElement(Tag, Object.assign({}, attributes, {
+    style: {
+      position: 'relative'
+    }
+  }), children);
+};
+
+/**
+ * A React context for sharing the `decorate` prop of the editable.
+ */
+
+var DecorateContext = /*#__PURE__*/createContext(() => []);
+/**
+ * Get the current `decorate` prop of the editable.
+ */
+
+var useDecorate = () => {
+  return useContext(DecorateContext);
+};
+
+/**
+ * A React context for sharing the `selected` state of an element.
+ */
+
+var SelectedContext = /*#__PURE__*/createContext(false);
+/**
+ * Get the current `selected` state of an element.
+ */
+
+var useSelected = () => {
+  return useContext(SelectedContext);
+};
+
+/**
+ * Children.
+ */
+
+var useChildren = props => {
+  var {
+    decorations,
+    node,
+    renderElement,
+    renderPlaceholder,
+    renderLeaf,
+    selection
+  } = props;
+  var decorate = useDecorate();
+  var editor = useSlateStatic();
+  var path = ReactEditor.findPath(editor, node);
+  var children = [];
+  var isLeafBlock = Element$1.isElement(node) && !editor.isInline(node) && Editor.hasInlines(editor, node);
+
+  for (var i = 0; i < node.children.length; i++) {
+    var p = path.concat(i);
+    var n = node.children[i];
+    var key = ReactEditor.findKey(editor, n);
+    var range = Editor.range(editor, p);
+    var sel = selection && Range.intersection(range, selection);
+    var ds = decorate([n, p]);
+
+    for (var dec of decorations) {
+      var d = Range.intersection(dec, range);
+
+      if (d) {
+        ds.push(d);
+      }
+    }
+
+    if (Element$1.isElement(n)) {
+      children.push( /*#__PURE__*/React.createElement(SelectedContext.Provider, {
+        key: "provider-".concat(key.id),
+        value: !!sel
+      }, /*#__PURE__*/React.createElement(MemoizedElement, {
+        decorations: ds,
+        element: n,
+        key: key.id,
+        renderElement: renderElement,
+        renderPlaceholder: renderPlaceholder,
+        renderLeaf: renderLeaf,
+        selection: sel
+      })));
+    } else {
+      children.push( /*#__PURE__*/React.createElement(MemoizedText, {
+        decorations: ds,
+        key: key.id,
+        isLast: isLeafBlock && i === node.children.length - 1,
+        parent: node,
+        renderPlaceholder: renderPlaceholder,
+        renderLeaf: renderLeaf,
+        text: n
+      }));
+    }
+
+    NODE_TO_INDEX.set(n, i);
+    NODE_TO_PARENT.set(n, node);
+  }
+
+  return children;
+};
+
+/**
+ * A React context for sharing the `readOnly` state of the editor.
+ */
+
+var ReadOnlyContext = /*#__PURE__*/createContext(false);
+/**
+ * Get the current `readOnly` state of the editor.
+ */
+
+var useReadOnly = () => {
+  return useContext(ReadOnlyContext);
+};
+
+var SlateContext = /*#__PURE__*/createContext(null);
+/**
+ * Get the current editor object from the React context.
+ */
+
+var useSlate = () => {
+  var context = useContext(SlateContext);
+
+  if (!context) {
+    throw new Error("The `useSlate` hook must be used inside the <Slate> component's context.");
+  }
+
+  var {
+    editor
+  } = context;
+  return editor;
+};
+var useSlateWithV = () => {
+  var context = useContext(SlateContext);
+
+  if (!context) {
+    throw new Error("The `useSlate` hook must be used inside the <Slate> component's context.");
+  }
+
+  return context;
+};
 
 function useTrackUserInput() {
   var editor = useSlateStatic();
@@ -3014,9 +2834,225 @@ function useTrackUserInput() {
   };
 }
 
+var TRIPLE_CLICK = 3;
+
+/**
+ * Hotkey mappings for each platform.
+ */
+
+var HOTKEYS = {
+  bold: 'mod+b',
+  compose: ['down', 'left', 'right', 'up', 'backspace', 'enter'],
+  moveBackward: 'left',
+  moveForward: 'right',
+  moveWordBackward: 'ctrl+left',
+  moveWordForward: 'ctrl+right',
+  deleteBackward: 'shift?+backspace',
+  deleteForward: 'shift?+delete',
+  extendBackward: 'shift+left',
+  extendForward: 'shift+right',
+  italic: 'mod+i',
+  insertSoftBreak: 'shift+enter',
+  splitBlock: 'enter',
+  undo: 'mod+z'
+};
+var APPLE_HOTKEYS = {
+  moveLineBackward: 'opt+up',
+  moveLineForward: 'opt+down',
+  moveWordBackward: 'opt+left',
+  moveWordForward: 'opt+right',
+  deleteBackward: ['ctrl+backspace', 'ctrl+h'],
+  deleteForward: ['ctrl+delete', 'ctrl+d'],
+  deleteLineBackward: 'cmd+shift?+backspace',
+  deleteLineForward: ['cmd+shift?+delete', 'ctrl+k'],
+  deleteWordBackward: 'opt+shift?+backspace',
+  deleteWordForward: 'opt+shift?+delete',
+  extendLineBackward: 'opt+shift+up',
+  extendLineForward: 'opt+shift+down',
+  redo: 'cmd+shift+z',
+  transposeCharacter: 'ctrl+t'
+};
+var WINDOWS_HOTKEYS = {
+  deleteWordBackward: 'ctrl+shift?+backspace',
+  deleteWordForward: 'ctrl+shift?+delete',
+  redo: ['ctrl+y', 'ctrl+shift+z']
+};
+/**
+ * Create a platform-aware hotkey checker.
+ */
+
+var create = key => {
+  var generic = HOTKEYS[key];
+  var apple = APPLE_HOTKEYS[key];
+  var windows = WINDOWS_HOTKEYS[key];
+  var isGeneric = generic && isKeyHotkey(generic);
+  var isApple = apple && isKeyHotkey(apple);
+  var isWindows = windows && isKeyHotkey(windows);
+  return event => {
+    if (isGeneric && isGeneric(event)) return true;
+    if (IS_APPLE && isApple && isApple(event)) return true;
+    if (!IS_APPLE && isWindows && isWindows(event)) return true;
+    return false;
+  };
+};
+/**
+ * Hotkeys.
+ */
+
+
+var Hotkeys = {
+  isBold: create('bold'),
+  isCompose: create('compose'),
+  isMoveBackward: create('moveBackward'),
+  isMoveForward: create('moveForward'),
+  isDeleteBackward: create('deleteBackward'),
+  isDeleteForward: create('deleteForward'),
+  isDeleteLineBackward: create('deleteLineBackward'),
+  isDeleteLineForward: create('deleteLineForward'),
+  isDeleteWordBackward: create('deleteWordBackward'),
+  isDeleteWordForward: create('deleteWordForward'),
+  isExtendBackward: create('extendBackward'),
+  isExtendForward: create('extendForward'),
+  isExtendLineBackward: create('extendLineBackward'),
+  isExtendLineForward: create('extendLineForward'),
+  isItalic: create('italic'),
+  isMoveLineBackward: create('moveLineBackward'),
+  isMoveLineForward: create('moveLineForward'),
+  isMoveWordBackward: create('moveWordBackward'),
+  isMoveWordForward: create('moveWordForward'),
+  isRedo: create('redo'),
+  isSoftBreak: create('insertSoftBreak'),
+  isSplitBlock: create('splitBlock'),
+  isTransposeCharacter: create('transposeCharacter'),
+  isUndo: create('undo')
+};
+
+var createRestoreDomManager = (editor, receivedUserInput) => {
+  var bufferedMutations = [];
+
+  var clear = () => {
+    bufferedMutations = [];
+  };
+
+  var registerMutations = mutations => {
+    if (!receivedUserInput.current) {
+      return;
+    }
+
+    var trackedMutations = mutations.filter(mutation => isTrackedMutation(editor, mutation, mutations));
+    bufferedMutations.push(...trackedMutations);
+  };
+
+  function restoreDOM() {
+    bufferedMutations.reverse().forEach(mutation => {
+      if (mutation.type === 'characterData') {
+        mutation.target.textContent = mutation.oldValue;
+        return;
+      }
+
+      mutation.removedNodes.forEach(node => {
+        mutation.target.insertBefore(node, mutation.nextSibling);
+      });
+      mutation.addedNodes.forEach(node => {
+        mutation.target.removeChild(node);
+      });
+    }); // Clear buffered mutations to ensure we don't undo them twice
+
+    clear();
+  }
+
+  return {
+    registerMutations,
+    restoreDOM,
+    clear
+  };
+};
+
+var MUTATION_OBSERVER_CONFIG = {
+  subtree: true,
+  childList: true,
+  characterData: true,
+  characterDataOldValue: true
+}; // We have to use a class component here since we rely on `getSnapshotBeforeUpdate` which has no FC equivalent
+// to run code synchronously immediately before react commits the component update to the DOM.
+
+class RestoreDOMComponent extends Component {
+  constructor() {
+    super(...arguments);
+    this.context = null;
+    this.manager = null;
+    this.mutationObserver = null;
+  }
+
+  observe() {
+    var _this$mutationObserve;
+
+    var {
+      node
+    } = this.props;
+
+    if (!node.current) {
+      throw new Error('Failed to attach MutationObserver, `node` is undefined');
+    }
+
+    (_this$mutationObserve = this.mutationObserver) === null || _this$mutationObserve === void 0 ? void 0 : _this$mutationObserve.observe(node.current, MUTATION_OBSERVER_CONFIG);
+  }
+
+  componentDidMount() {
+    var {
+      receivedUserInput
+    } = this.props;
+    var editor = this.context;
+    this.manager = createRestoreDomManager(editor, receivedUserInput);
+    this.mutationObserver = new MutationObserver(this.manager.registerMutations);
+    this.observe();
+  }
+
+  getSnapshotBeforeUpdate() {
+    var _this$mutationObserve2, _this$mutationObserve3, _this$manager2;
+
+    var pendingMutations = (_this$mutationObserve2 = this.mutationObserver) === null || _this$mutationObserve2 === void 0 ? void 0 : _this$mutationObserve2.takeRecords();
+
+    if (pendingMutations !== null && pendingMutations !== void 0 && pendingMutations.length) {
+      var _this$manager;
+
+      (_this$manager = this.manager) === null || _this$manager === void 0 ? void 0 : _this$manager.registerMutations(pendingMutations);
+    }
+
+    (_this$mutationObserve3 = this.mutationObserver) === null || _this$mutationObserve3 === void 0 ? void 0 : _this$mutationObserve3.disconnect();
+    (_this$manager2 = this.manager) === null || _this$manager2 === void 0 ? void 0 : _this$manager2.restoreDOM();
+    return null;
+  }
+
+  componentDidUpdate() {
+    var _this$manager3;
+
+    (_this$manager3 = this.manager) === null || _this$manager3 === void 0 ? void 0 : _this$manager3.clear();
+    this.observe();
+  }
+
+  componentWillUnmount() {
+    var _this$mutationObserve4;
+
+    (_this$mutationObserve4 = this.mutationObserver) === null || _this$mutationObserve4 === void 0 ? void 0 : _this$mutationObserve4.disconnect();
+  }
+
+  render() {
+    return this.props.children;
+  }
+
+}
+
+RestoreDOMComponent.contextType = EditorContext;
+var RestoreDOM = IS_ANDROID ? RestoreDOMComponent : _ref => {
+  var {
+    children
+  } = _ref;
+  return /*#__PURE__*/React.createElement(React.Fragment, null, children);
+};
+
 var _excluded$1 = ["autoFocus", "decorate", "onDOMBeforeInput", "placeholder", "readOnly", "renderElement", "renderLeaf", "renderPlaceholder", "scrollSelectionIntoView", "style", "as"],
-    _excluded2 = ["value"],
-    _excluded3 = ["value"];
+    _excluded2 = ["value"];
 
 function ownKeys$1(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) { symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); } keys.push.apply(keys, symbols); } return keys; }
 
@@ -3100,8 +3136,8 @@ var Editable = props => {
         anchorNode,
         focusNode
       } = domSelection;
-      var anchorNodeSelectable = hasEditableTarget(editor, anchorNode) || isTargetInsideNonReadonlyVoid(editor, anchorNode);
-      var focusNodeSelectable = hasEditableTarget(editor, focusNode) || isTargetInsideNonReadonlyVoid(editor, focusNode);
+      var anchorNodeSelectable = ReactEditor.hasEditableTarget(editor, anchorNode) || ReactEditor.isTargetInsideNonReadonlyVoid(editor, anchorNode);
+      var focusNodeSelectable = ReactEditor.hasEditableTarget(editor, focusNode) || ReactEditor.isTargetInsideNonReadonlyVoid(editor, focusNode);
 
       if (anchorNodeSelectable && focusNodeSelectable) {
         var range = ReactEditor.toSlateRange(editor, domSelection, {
@@ -3116,6 +3152,11 @@ var Editable = props => {
             androidInputManager === null || androidInputManager === void 0 ? void 0 : androidInputManager.handleUserSelect(range);
           }
         }
+      } // Deselect the editor if the dom selection is not selectable in readonly mode
+
+
+      if (readOnly && (!anchorNodeSelectable || !focusNodeSelectable)) {
+        Transforms.deselect(editor);
       }
     }
   }, 100), [readOnly]);
@@ -3280,7 +3321,7 @@ var Editable = props => {
   var onDOMBeforeInput = useCallback(event => {
     onUserInput();
 
-    if (!readOnly && hasEditableTarget(editor, event.target) && !isDOMEventHandled(event, propsOnDOMBeforeInput)) {
+    if (!readOnly && ReactEditor.hasEditableTarget(editor, event.target) && !isDOMEventHandled(event, propsOnDOMBeforeInput)) {
       var _EDITOR_TO_USER_SELEC;
 
       // COMPAT: BeforeInput events aren't cancelable on android, so we have to handle them differently using the android input manager.
@@ -3501,16 +3542,6 @@ var Editable = props => {
         case 'insertReplacementText':
         case 'insertText':
           {
-            var {
-              selection: _selection
-            } = editor;
-
-            if (_selection) {
-              if (Range.isExpanded(_selection)) {
-                Editor.deleteFragment(editor);
-              }
-            }
-
             if (type === 'insertFromComposition') {
               // COMPAT: in Safari, `compositionend` is dispatched after the
               // `beforeinput` for "insertFromComposition". But if we wait for it
@@ -3601,11 +3632,13 @@ var Editable = props => {
     var {
       anchor
     } = editor.selection;
+    var leaf = Node.leaf(editor, anchor.path);
 
-    var _Node$leaf = Node.leaf(editor, anchor.path),
-        rest = _objectWithoutProperties(_Node$leaf, _excluded2);
+    var rest = _objectWithoutProperties(leaf, _excluded2); // While marks isn't a 'complete' text, we can still use loose Text.equals
+    // here which only compares marks anyway.
 
-    if (!Text$1.equals(rest, marks, {
+
+    if (!Text$1.equals(leaf, marks, {
       loose: true
     })) {
       state.hasMarkPlaceholder = true;
@@ -3631,11 +3664,10 @@ var Editable = props => {
         var {
           anchor: _anchor
         } = selection;
+        var text = Node.leaf(editor, _anchor.path); // While marks isn't a 'complete' text, we can still use loose Text.equals
+        // here which only compares marks anyway.
 
-        var _Node$leaf2 = Node.leaf(editor, _anchor.path),
-            rest = _objectWithoutProperties(_Node$leaf2, _excluded3);
-
-        if (!Text$1.equals(rest, marks, {
+        if (marks && !Text$1.equals(text, marks, {
           loose: true
         })) {
           EDITOR_TO_PENDING_INSERTION_MARKS.set(editor, marks);
@@ -3654,7 +3686,8 @@ var Editable = props => {
     node: ref,
     receivedUserInput: receivedUserInput
   }, /*#__PURE__*/React.createElement(Component, Object.assign({
-    role: readOnly ? undefined : 'textbox'
+    role: readOnly ? undefined : 'textbox',
+    "aria-multiline": readOnly ? undefined : true
   }, attributes, {
     // COMPAT: Certain browsers don't support the `beforeinput` event, so we'd
     // have to use hacks to make these replacement-based features work.
@@ -3688,7 +3721,7 @@ var Editable = props => {
       // COMPAT: Certain browsers don't support the `beforeinput` event, so we
       // fall back to React's leaky polyfill instead just for it. It
       // only works for the `insertText` input type.
-      if (!HAS_BEFORE_INPUT_SUPPORT && !readOnly && !isEventHandled(event, attributes.onBeforeInput) && hasEditableTarget(editor, event.target)) {
+      if (!HAS_BEFORE_INPUT_SUPPORT && !readOnly && !isEventHandled(event, attributes.onBeforeInput) && ReactEditor.hasSelectableTarget(editor, event.target)) {
         event.preventDefault();
 
         if (!ReactEditor.isComposing(editor)) {
@@ -3714,7 +3747,7 @@ var Editable = props => {
       deferredOperations.current = [];
     }, []),
     onBlur: useCallback(event => {
-      if (readOnly || state.isUpdatingSelection || !hasEditableTarget(editor, event.target) || isEventHandled(event, attributes.onBlur)) {
+      if (readOnly || state.isUpdatingSelection || !ReactEditor.hasSelectableTarget(editor, event.target) || isEventHandled(event, attributes.onBlur)) {
         return;
       } // COMPAT: If the current `activeElement` is still the previous
       // one, this is due to the window being blurred when the tab
@@ -3767,7 +3800,7 @@ var Editable = props => {
       IS_FOCUSED.delete(editor);
     }, [readOnly, attributes.onBlur]),
     onClick: useCallback(event => {
-      if (hasTarget(editor, event.target) && !isEventHandled(event, attributes.onClick) && isDOMNode(event.target)) {
+      if (ReactEditor.hasTarget(editor, event.target) && !isEventHandled(event, attributes.onClick) && isDOMNode(event.target)) {
         var node = ReactEditor.toSlateNode(editor, event.target);
         var path = ReactEditor.findPath(editor, node); // At this time, the Slate document may be arbitrarily different,
         // because onClick handlers can change the document before we get here.
@@ -3818,7 +3851,7 @@ var Editable = props => {
       }
     }, [readOnly, attributes.onClick]),
     onCompositionEnd: useCallback(event => {
-      if (hasEditableTarget(editor, event.target)) {
+      if (ReactEditor.hasSelectableTarget(editor, event.target)) {
         if (ReactEditor.isComposing(editor)) {
           setIsComposing(false);
           IS_COMPOSING.set(editor, false);
@@ -3854,7 +3887,7 @@ var Editable = props => {
       }
     }, [attributes.onCompositionEnd]),
     onCompositionUpdate: useCallback(event => {
-      if (hasEditableTarget(editor, event.target) && !isEventHandled(event, attributes.onCompositionUpdate)) {
+      if (ReactEditor.hasSelectableTarget(editor, event.target) && !isEventHandled(event, attributes.onCompositionUpdate)) {
         if (!ReactEditor.isComposing(editor)) {
           setIsComposing(true);
           IS_COMPOSING.set(editor, true);
@@ -3862,7 +3895,7 @@ var Editable = props => {
       }
     }, [attributes.onCompositionUpdate]),
     onCompositionStart: useCallback(event => {
-      if (hasEditableTarget(editor, event.target)) {
+      if (ReactEditor.hasSelectableTarget(editor, event.target)) {
         androidInputManager === null || androidInputManager === void 0 ? void 0 : androidInputManager.handleCompositionStart(event);
 
         if (isEventHandled(event, attributes.onCompositionStart) || IS_ANDROID) {
@@ -3900,13 +3933,13 @@ var Editable = props => {
       }
     }, [attributes.onCompositionStart]),
     onCopy: useCallback(event => {
-      if (hasEditableTarget(editor, event.target) && !isEventHandled(event, attributes.onCopy)) {
+      if (ReactEditor.hasSelectableTarget(editor, event.target) && !isEventHandled(event, attributes.onCopy)) {
         event.preventDefault();
         ReactEditor.setFragmentData(editor, event.clipboardData, 'copy');
       }
     }, [attributes.onCopy]),
     onCut: useCallback(event => {
-      if (!readOnly && hasEditableTarget(editor, event.target) && !isEventHandled(event, attributes.onCut)) {
+      if (!readOnly && ReactEditor.hasSelectableTarget(editor, event.target) && !isEventHandled(event, attributes.onCut)) {
         event.preventDefault();
         ReactEditor.setFragmentData(editor, event.clipboardData, 'cut');
         var {
@@ -3927,7 +3960,7 @@ var Editable = props => {
       }
     }, [readOnly, attributes.onCut]),
     onDragOver: useCallback(event => {
-      if (hasTarget(editor, event.target) && !isEventHandled(event, attributes.onDragOver)) {
+      if (ReactEditor.hasTarget(editor, event.target) && !isEventHandled(event, attributes.onDragOver)) {
         // Only when the target is void, call `preventDefault` to signal
         // that drops are allowed. Editable content is droppable by
         // default, and calling `preventDefault` hides the cursor.
@@ -3939,7 +3972,7 @@ var Editable = props => {
       }
     }, [attributes.onDragOver]),
     onDragStart: useCallback(event => {
-      if (!readOnly && hasTarget(editor, event.target) && !isEventHandled(event, attributes.onDragStart)) {
+      if (!readOnly && ReactEditor.hasTarget(editor, event.target) && !isEventHandled(event, attributes.onDragStart)) {
         var node = ReactEditor.toSlateNode(editor, event.target);
         var path = ReactEditor.findPath(editor, node);
         var voidMatch = Editor.isVoid(editor, node) || Editor.void(editor, {
@@ -3958,7 +3991,7 @@ var Editable = props => {
       }
     }, [readOnly, attributes.onDragStart]),
     onDrop: useCallback(event => {
-      if (!readOnly && hasTarget(editor, event.target) && !isEventHandled(event, attributes.onDrop)) {
+      if (!readOnly && ReactEditor.hasTarget(editor, event.target) && !isEventHandled(event, attributes.onDrop)) {
         event.preventDefault(); // Keep a reference to the dragged range before updating selection
 
         var draggedRange = editor.selection; // Find the range where the drop happened
@@ -3989,7 +4022,7 @@ var Editable = props => {
       state.isDraggingInternally = false;
     }, [readOnly, attributes.onDrop]),
     onDragEnd: useCallback(event => {
-      if (!readOnly && state.isDraggingInternally && attributes.onDragEnd && hasTarget(editor, event.target)) {
+      if (!readOnly && state.isDraggingInternally && attributes.onDragEnd && ReactEditor.hasTarget(editor, event.target)) {
         attributes.onDragEnd(event);
       } // When dropping on a different droppable element than the current editor,
       // `onDrop` is not called. So we need to clean up in `onDragEnd` instead.
@@ -3999,7 +4032,7 @@ var Editable = props => {
       state.isDraggingInternally = false;
     }, [readOnly, attributes.onDragEnd]),
     onFocus: useCallback(event => {
-      if (!readOnly && !state.isUpdatingSelection && hasEditableTarget(editor, event.target) && !isEventHandled(event, attributes.onFocus)) {
+      if (!readOnly && !state.isUpdatingSelection && ReactEditor.hasSelectableTarget(editor, event.target) && !isEventHandled(event, attributes.onFocus)) {
         var el = ReactEditor.toDOMNode(editor, editor);
         var root = ReactEditor.findDocumentOrShadowRoot(editor);
         state.latestElement = root.activeElement; // COMPAT: If the editor has nested editable elements, the focus
@@ -4015,7 +4048,7 @@ var Editable = props => {
       }
     }, [readOnly, attributes.onFocus]),
     onKeyDown: useCallback(event => {
-      if (!readOnly && hasEditableTarget(editor, event.target)) {
+      if (!readOnly && ReactEditor.hasEditableTarget(editor, event.target)) {
         androidInputManager === null || androidInputManager === void 0 ? void 0 : androidInputManager.handleKeyDown(event);
         var {
           nativeEvent
@@ -4293,7 +4326,7 @@ var Editable = props => {
             if (selection && (Hotkeys.isDeleteBackward(nativeEvent) || Hotkeys.isDeleteForward(nativeEvent)) && Range.isCollapsed(selection)) {
               var currentNode = Node.parent(editor, selection.anchor.path);
 
-              if (Element$1.isElement(currentNode) && Editor.isVoid(editor, currentNode) && Editor.isInline(editor, currentNode)) {
+              if (Element$1.isElement(currentNode) && Editor.isVoid(editor, currentNode) && (Editor.isInline(editor, currentNode) || Editor.isBlock(editor, currentNode))) {
                 event.preventDefault();
                 Editor.deleteBackward(editor, {
                   unit: 'block'
@@ -4306,7 +4339,7 @@ var Editable = props => {
       }
     }, [readOnly, attributes.onKeyDown]),
     onPaste: useCallback(event => {
-      if (!readOnly && hasEditableTarget(editor, event.target) && !isEventHandled(event, attributes.onPaste)) {
+      if (!readOnly && ReactEditor.hasSelectableTarget(editor, event.target) && !isEventHandled(event, attributes.onPaste)) {
         // COMPAT: Certain browsers don't support the `beforeinput` event, so we
         // fall back to React's `onPaste` here instead.
         // COMPAT: Firefox, Chrome and Safari don't emit `beforeinput` events
@@ -4365,34 +4398,9 @@ var defaultScrollSelectionIntoView = (editor, domRange) => {
   }
 };
 /**
- * Check if the target is in the editor.
- */
-
-
-var hasTarget = (editor, target) => {
-  return isDOMNode(target) && ReactEditor.hasDOMNode(editor, target);
-};
-/**
- * Check if the target is editable and in the editor.
- */
-
-var hasEditableTarget = (editor, target) => {
-  return isDOMNode(target) && ReactEditor.hasDOMNode(editor, target, {
-    editable: true
-  });
-};
-/**
- * Check if the target is inside void and in an non-readonly editor.
- */
-
-var isTargetInsideNonReadonlyVoid = (editor, target) => {
-  if (IS_READ_ONLY.get(editor)) return false;
-  var slateNode = hasTarget(editor, target) && ReactEditor.toSlateNode(editor, target);
-  return Editor.isVoid(editor, slateNode);
-};
-/**
  * Check if an event is overrided by a handler.
  */
+
 
 var isEventHandled = (event, handler) => {
   if (!handler) {
@@ -4577,11 +4585,11 @@ var Slate = props => {
   var unmountRef = useRef(false);
   var [context, setContext] = React.useState(() => {
     if (!Node.isNodeList(value)) {
-      throw new Error("[Slate] value is invalid! Expected a list of elements" + "but got: ".concat(Scrubber.stringify(value)));
+      throw new Error("[Slate] value is invalid! Expected a list of elements but got: ".concat(Scrubber.stringify(value)));
     }
 
     if (!Editor.isEditor(editor)) {
-      throw new Error("[Slate] editor is invalid! you passed:" + "".concat(Scrubber.stringify(editor)));
+      throw new Error("[Slate] editor is invalid! You passed: ".concat(Scrubber.stringify(editor)));
     }
 
     editor.children = value;

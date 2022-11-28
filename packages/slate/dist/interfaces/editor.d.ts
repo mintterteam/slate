@@ -16,6 +16,7 @@ export interface BaseEditor {
     marks: EditorMarks | null;
     isInline: (element: Element) => boolean;
     isVoid: (element: Element) => boolean;
+    markableVoid: (element: Element) => boolean;
     normalizeNode: (entry: NodeEntry) => void;
     onChange: () => void;
     addMark: (key: string, value: any) => void;

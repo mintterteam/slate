@@ -10,6 +10,10 @@ export interface ReactEditor extends BaseEditor {
     insertTextData: (data: DataTransfer) => boolean;
     setFragmentData: (data: DataTransfer, originEvent?: 'drag' | 'copy' | 'cut') => void;
     hasRange: (editor: ReactEditor, range: Range) => boolean;
+    hasTarget: (editor: ReactEditor, target: EventTarget | null) => target is DOMNode;
+    hasEditableTarget: (editor: ReactEditor, target: EventTarget | null) => target is DOMNode;
+    hasSelectableTarget: (editor: ReactEditor, target: EventTarget | null) => boolean;
+    isTargetInsideNonReadonlyVoid: (editor: ReactEditor, target: EventTarget | null) => boolean;
 }
 export declare const ReactEditor: {
     /**
@@ -116,6 +120,22 @@ export declare const ReactEditor: {
         placeholder?: string | undefined;
     };
     hasRange(editor: ReactEditor, range: Range): boolean;
+    /**
+     * Check if the target is in the editor.
+     */
+    hasTarget(editor: ReactEditor, target: EventTarget | null): target is DOMNode;
+    /**
+     * Check if the target is editable and in the editor.
+     */
+    hasEditableTarget(editor: ReactEditor, target: EventTarget | null): target is DOMNode;
+    /**
+     * Check if the target can be selectable
+     */
+    hasSelectableTarget(editor: ReactEditor, target: EventTarget | null): boolean;
+    /**
+     * Check if the target is inside void and in an non-readonly editor.
+     */
+    isTargetInsideNonReadonlyVoid(editor: ReactEditor, target: EventTarget | null): boolean;
     /**
      * Experimental and android specific: Flush all pending diffs and cancel composition at the next possible time.
      */

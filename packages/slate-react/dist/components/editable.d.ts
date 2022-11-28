@@ -1,7 +1,7 @@
 import React from 'react';
 import { Element, NodeEntry, Range, Text } from 'slate';
 import { ReactEditor } from '../plugin/react-editor';
-import { DOMNode, DOMRange } from '../utils/dom';
+import { DOMRange } from '../utils/dom';
 /**
  * `RenderElementProps` are passed to the `renderElement` handler.
  */
@@ -68,18 +68,6 @@ export declare const DefaultPlaceholder: ({ attributes, children, }: RenderPlace
  * A default memoized decorate function.
  */
 export declare const defaultDecorate: (entry: NodeEntry) => Range[];
-/**
- * Check if the target is in the editor.
- */
-export declare const hasTarget: (editor: ReactEditor, target: EventTarget | null) => target is DOMNode;
-/**
- * Check if the target is editable and in the editor.
- */
-export declare const hasEditableTarget: (editor: ReactEditor, target: EventTarget | null) => target is DOMNode;
-/**
- * Check if the target is inside void and in an non-readonly editor.
- */
-export declare const isTargetInsideNonReadonlyVoid: (editor: ReactEditor, target: EventTarget | null) => boolean;
 /**
  * Check if an event is overrided by a handler.
  */
